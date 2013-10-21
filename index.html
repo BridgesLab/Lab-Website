@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <meta charset='utf-8' />
+    <meta http-equiv="X-UA-Compatible" content="chrome=1" />
+    <meta name="description" content="Lab-website : django based code for a lab website." />
+
+    <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
+
+    <title>Lab-website</title>
+  </head>
+
+  <body>
+
+    <!-- HEADER -->
+    <div id="header_wrap" class="outer">
+        <header class="inner">
+          <a id="forkme_banner" href="https://github.com/BridgesLab/Lab-Website">View on GitHub</a>
+
+          <h1 id="project_title">Lab-website</h1>
+          <h2 id="project_tagline">django based code for a lab website.</h2>
+
+            <section id="downloads">
+              <a class="zip_download_link" href="https://github.com/BridgesLab/Lab-Website/zipball/master">Download this project as a .zip file</a>
+              <a class="tar_download_link" href="https://github.com/BridgesLab/Lab-Website/tarball/master">Download this project as a tar.gz file</a>
+            </section>
+        </header>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div id="main_content_wrap" class="outer">
+      <section id="main_content" class="inner">
+        <p>This project includes the source code for a django/python based biomedical research laboratory website.  This was largely configured for personal use, but is licensed under a CC0 free license, so feel free to copy and modify with no restrictions.</p>
+
+<h1>
+<a name="installation-and-setup" class="anchor" href="#installation-and-setup"><span class="octicon octicon-link"></span></a>Installation and Setup</h1>
+
+<ol>
+<li>Clone or download this code and extract it somewhere on your system.</li>
+<li>Inside the lab_website directory, open <strong>localsettings_empty.py</strong> with a text editor and fill in <strong>'django.db.backends.sqlite3'</strong> under DATABASES... ENGINE and enter a location for your SQLite database to be stored under NAME.  To use other database types see the <code>Django Documentation on Databases &lt;https://docs.djangoproject.com/en/1.4/ref/databases/&gt;</code>_.</li>
+<li>Optional:  Fill in the the ADMINS, TIME_ZONE and LANGUAGE_CODE as needed.<br>
+</li>
+<li>Save this file as <strong>localsettings.py</strong> in the same directory.</li>
+<li>
+<p>Run the following command within the Lab Website directory to populate the database.  Enter the superuser information when prompted::</p>
+
+<p>python manage.py syncdb
+python manage.py schemamigration communication --initial
+python manage.py schemamigration papers --initial
+python manage.py schemamigration personnel --initial
+python manage.py schemamigration projects --initial<br>
+python manage.py migrate --fake</p>
+</li>
+</ol><h2>
+<a name="testing" class="anchor" href="#testing"><span class="octicon octicon-link"></span></a>Testing</h2>
+
+<p>Run the test suite with::</p>
+
+<pre><code>python manage.py test
+</code></pre>
+
+<p>In localsettings.py, set Debug=FALSE when you have verified everything is working.    </p>
+
+<h1>
+<a name="dependencies-and-other-apps" class="anchor" href="#dependencies-and-other-apps"><span class="octicon octicon-link"></span></a>Dependencies and Other Apps</h1>
+
+<p>The two main software dependencies for this project are <code>Python &lt;http://www.python.org/&gt;</code>_ and <code>Django &lt;http://djangoproject.org&gt;</code><em>.  You will require a database backend and a webserver for proper function.  For detailed installation instructions for Django see <code>Django Installation Instructions &lt;https://docs.djangoproject.com/en/1.4/topics/install/&gt;</code></em></p>
+
+<p>The current version uses Python 2.7 and Django 1.4.  </p>
+
+<p>To install python dependencies, entering on a command line:: </p>
+
+<pre><code>pip install -r requirements.txt
+</code></pre>
+
+<p>Another python package dependency is the python-oauth2 library.  This can be downloaded and installed from <a href="https://github.com/brosner/python-oauth2">https://github.com/brosner/python-oauth2</a>.</p>
+
+<p>This project also includes links to three other apps which would have to be installed and configured separately:</p>
+
+<ul>
+<li>Blog: any blogging software served at http://yourserver/blog</li>
+<li>Protocol Wiki: a wikimedia based protocol site served at http://yourserver/wiki</li>
+<li>MouseDB: a database for animal colony management which can optionally be served at http://yoursever/mousedb.  Based on software available at <a href="http://github.com/davebridges/mousedb">http://github.com/davebridges/mousedb</a>
+</li>
+<li>ExperimentDB: a data and laboratory inventory management tool which can optionally be served at http://yourserver/experimentdb.  Uses software available at <a href="https://github.com/davebridges/ExperimentDB">https://github.com/davebridges/ExperimentDB</a><br>
+</li>
+</ul>
+      </section>
+    </div>
+
+    <!-- FOOTER  -->
+    <div id="footer_wrap" class="outer">
+      <footer class="inner">
+        <p class="copyright">Lab-website maintained by <a href="https://github.com/BridgesLab">BridgesLab</a></p>
+        <p>Published with <a href="http://pages.github.com">GitHub Pages</a></p>
+      </footer>
+    </div>
+
+    
+
+  </body>
+</html>
