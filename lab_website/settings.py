@@ -52,7 +52,8 @@ INSTALLED_APPS = (
     'papers',
     'projects',
     #'debug_toolbar',
-    'tastypie'
+    'rest_framework',
+    'django_filters',
 )
 
 TEMPLATES = [
