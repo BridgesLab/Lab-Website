@@ -426,7 +426,7 @@ class PublicationSerializerTest(TestCase):
         expected_fields = [
             'id', 'title', 'title_slug', 'abstract', 'journal', 'year',
             'volume', 'issue', 'pages', 'type', 'doi', 'pmid', 'pmcid',
-            'mendeley_id', 'mendeley_url', 'laboratory_paper',
+            'preprint', 'laboratory_paper',
             'interesting_paper', 'date_added', 'date_last_modified'
         ]
         
