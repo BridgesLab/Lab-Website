@@ -35,6 +35,8 @@ dependencies:
       - django-ajax-selects==2.2.1
       - django-braces==1.14.0
       - djangorestframework-xml==2.0.0
+      - drf-spectacular==0.28.0
+      - django-cors-headers==4.7.0
       - docutils==0.21.2
       - httplib2==0.22.0
       - idna==3.7
