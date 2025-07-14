@@ -5,8 +5,6 @@ from django.contrib import admin
 from django.contrib.sitemaps import views as sitemap_views
 from django.contrib.sitemaps import Sitemap
 
-#from tastypie.api import Api
-
 import communication
 from communication.views import FeedDetailView, LabLocationView
 from papers.views import JournalClubList
@@ -15,10 +13,6 @@ from personnel.sitemap import LabPersonnelSitemap
 from papers.sitemap import LabPublicationsSitemap, CommentarySitemap
 from projects.sitemap import ProjectsSitemap, FundingSitemap
 from communication.sitemap import PostsSitemap
-
-#from papers.api import PublicationResource
-#from projects.api import ProjectResource
-#from personnel.api import PersonnelResource
 
 from papers.feeds import LabPapersFeed, InterestingPapersFeed, CommentaryFeed, JournalClubArticleFeed
 from projects.feeds import ProjectsFeed
@@ -38,11 +32,6 @@ class StaticViewSitemap(Sitemap):
 
     def location(self, item):
         return reverse(item)
-
-#v1_api = Api(api_name='v1')
-#v1_api.register(PublicationResource())
-#v1_api.register(ProjectResource())
-#v1_api.register(PersonnelResource())
 
 #this dictionary lists sitemap files which will be generated.
 sitemaps = {
@@ -66,6 +55,7 @@ urlpatterns = [
     # Admin docs and admin site
     path('admin/doc/', include('django.contrib.admindocs.urls')),
     path('admin/', admin.site.urls),
+    path('api/v2/', include('papers.api_urls')),
     
     # App includes (no namespace change here assuming no 3-tuples passed)
     path('contact/', include('communication.urls')), 
@@ -108,4 +98,11 @@ urlpatterns = [
     
     # Home page
     path('', IndexView.as_view(), name="home"),
+]
+
+from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
+
+urlpatterns += [
+    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
+    path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema')),
 ]

@@ -83,3 +83,19 @@ ANALYTICS_ROOT = '' #the root of your analytics tracking url
 #other settings
 PUBLICATION_POLICY_FILE = '' #URL for optional lab publication policy in restructured text format
 LAB_RULES_FILE = '' #URL for an optional laboratory rules file in restructured text format.
+
+# CORS settings (adjust as needed for your frontend)
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",  # React development server
+    "http://127.0.0.1:3000",
+    # Add your production domains
+]
+
+# Spectacular settings (for OpenAPI/Swagger docs)
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Papers API',
+    'DESCRIPTION': 'API for managing and retrieving academic publications',
+    'VERSION': '2.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'COMPONENT_SPLIT_REQUEST': True,
+}
