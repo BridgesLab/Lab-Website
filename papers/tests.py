@@ -15,12 +15,21 @@ And the view tests:
 
 * :class:`~papers.tests.PublicationViewTests` 
 """
+import json
+from datetime import date
 
 from django.test import TestCase
 from django.test.client import Client
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
+from django.urls import reverse
+
+from rest_framework.test import APITestCase
+from rest_framework import status
 
 from papers.models import Publication, AuthorDetails, Person, Commentary
+from papers.serializers import PublicationSerializer, PublicationListSerializer
+from papers.filters import PublicationFilter
 
 MODELS = [Publication, AuthorDetails, Commentary]
 
@@ -384,4 +393,319 @@ class CommentaryViewTests(TestCase):
         self.assertTrue('journal_club_list' in test_response.context)        
         self.assertTemplateUsed(test_response, 'base.html')
         self.assertTemplateUsed(test_response, 'jc-list.html')                                  
-        self.assertTemplateUsed(test_response, 'analytics_tracking.html')                             
+        self.assertTemplateUsed(test_response, 'analytics_tracking.html')    
+
+class PublicationSerializerTest(TestCase):
+    """Test cases for Publication serializers."""
+
+    fixtures = ['test_publication', 'test_publication_personnel']
+    
+    def setUp(self):
+        """Set up test data."""
+        self.publication = Publication.objects.create(
+            title='Test Publication',
+            abstract='This is a test abstract.',
+            journal='Test Journal',
+            year=2023,
+            volume=10,
+            issue=2,
+            pages='123-456',
+            type='journal-article',
+            doi='10.1234/test.doi',
+            pmid='12345678',
+            preprint=False,
+            laboratory_paper=True,
+            interesting_paper=False,
+        )
+    
+    def test_publication_serializer_fields(self):
+        """Test PublicationSerializer includes all expected fields."""
+        serializer = PublicationSerializer(self.publication)
+        data = serializer.data
+        
+        expected_fields = [
+            'id', 'title', 'title_slug', 'abstract', 'journal', 'year',
+            'volume', 'issue', 'pages', 'type', 'doi', 'pmid', 'pmcid',
+            'mendeley_id', 'mendeley_url', 'laboratory_paper',
+            'interesting_paper', 'date_added', 'date_last_modified'
+        ]
+        
+        for field in expected_fields:
+            self.assertIn(field, data)
+    
+    def test_publication_list_serializer_excludes_abstract(self):
+        """Test PublicationListSerializer excludes abstract field."""
+        serializer = PublicationListSerializer(self.publication)
+        data = serializer.data
+        
+        self.assertNotIn('abstract', data)
+        self.assertIn('title', data)
+        self.assertIn('journal', data)
+    
+    def test_serializer_read_only_fields(self):
+        """Test that read-only fields cannot be modified."""
+        serializer = PublicationSerializer(self.publication)
+        
+        # These fields should be read-only
+        read_only_fields = ['id', 'title_slug', 'date_added', 'date_last_modified', 'absolute_url']
+        
+        for field in read_only_fields:
+            self.assertIn(field, serializer.fields)
+            self.assertTrue(serializer.fields[field].read_only)
+    
+    def test_serializer_validation(self):
+        """Test serializer validation."""
+        valid_data = {
+            'title': 'New Publication',
+            'journal': 'New Journal',
+            'year': 2024,
+            'type': 'journal-article',
+            'preprint': 'False',
+            'laboratory_paper':'True',
+            'interesting_paper':'False',
+
+        }
+        
+        serializer = PublicationSerializer(data=valid_data)
+        self.assertTrue(serializer.is_valid())
+    
+    def test_serializer_invalid_year(self):
+        """Test serializer with invalid year."""
+        invalid_data = {
+            'title': 'Invalid Publication',
+            'year': 'not-a-year',
+            'type': 'journal-article',
+        }
+        
+        serializer = PublicationSerializer(data=invalid_data)
+        self.assertFalse(serializer.is_valid())
+        self.assertIn('year', serializer.errors)  
+
+class PublicationViewSetTest(APITestCase):
+    """Test cases for Publication API views."""
+
+    fixtures = ['test_publication', 'test_publication_personnel']
+    
+    def setUp(self):
+        """Set up test data."""
+        self.publication1 = Publication.objects.create(
+            title='First Publication',
+            abstract='First abstract.',
+            journal='Journal A',
+            year=2023,
+            type='journal-article',
+            preprint=False,
+            laboratory_paper=True,
+            interesting_paper=False,
+        )
+        
+        self.publication2 = Publication.objects.create(
+            title='Second Publication',
+            abstract='Second abstract.',
+            journal='Journal B',
+            year=2022,
+            type='book-section',
+            preprint=False,
+            laboratory_paper=False,
+            interesting_paper=True,
+        )
+    
+    def test_list_publications(self):
+        """Test listing all publications."""
+        url = reverse('api-publication-list')
+        response = self.client.get(url)
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['results']), 4)
+    
+    def test_list_publications_json_format(self):
+        """Test listing publications with JSON format."""
+        url = reverse('api-publication-list')
+        response = self.client.get(url, {'format': 'json'})
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response['Content-Type'], 'application/json')
+    
+    def test_list_publications_xml_format(self):
+        """Test listing publications with XML format."""
+        url = reverse('api-publication-list')
+        response = self.client.get(url, {'format': 'xml'})
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response['Content-Type'], 'application/xml; charset=utf-8')
+    
+    def test_retrieve_single_publication(self):
+        """Test retrieving a single publication."""
+        url = reverse('api-publication-detail', kwargs={'pk': self.publication1.pk})
+        response = self.client.get(url)
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['title'], 'First Publication')
+        self.assertIn('abstract', response.data)  # Full serializer includes abstract
+    
+    def test_filter_by_year(self):
+        """Test filtering publications by year."""
+        url = reverse('api-publication-list')
+        response = self.client.get(url, {'year': 2023})
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['results']), 1)
+        self.assertEqual(response.data['results'][0]['year'], 2023)
+    
+    def test_filter_by_type(self):
+        """Test filtering publications by type."""
+        url = reverse('api-publication-list')
+        response = self.client.get(url, {'type': 'journal-article'})
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['results']), 3)
+        self.assertEqual(response.data['results'][0]['type'], 'journal-article')
+    
+    def test_filter_by_laboratory_paper(self):
+        """Test filtering publications by laboratory_paper flag."""
+        url = reverse('api-publication-list')
+        response = self.client.get(url, {'laboratory_paper': True})
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['results']), 2)
+        self.assertTrue(response.data['results'][0]['laboratory_paper'])
+    
+    def test_search_publications(self):
+        """Test searching publications."""
+        url = reverse('api-publication-list')
+        response = self.client.get(url, {'search': 'First'})
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['results']), 3)
+        self.assertEqual(response.data['results'][0]['title'], 'First Publication')
+    
+    def test_get_publication_set(self):
+        """Test retrieving multiple publications by IDs."""
+        url = reverse('api-publication-get-set', kwargs={'ids': f'{self.publication1.pk},{self.publication2.pk}'})
+        response = self.client.get(url)
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['count'], 2)
+        self.assertEqual(len(response.data['results']), 2)
+    
+    def test_get_publication_set_invalid_ids(self):
+        """Test retrieving publications with invalid IDs."""
+        url = '/api/v2/publications/set/invalid,ids/'
+        response = self.client.get(url)
+        
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('Invalid ID format', response.data['error'])
+    
+    def test_laboratory_papers_endpoint(self):
+        """Test laboratory papers endpoint."""
+        url = reverse('api-publication-laboratory-papers')
+        response = self.client.get(url)
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['count'], 2)
+        self.assertTrue(response.data['results'][0]['laboratory_paper'])
+    
+    def test_interesting_papers_endpoint(self):
+        """Test interesting papers endpoint."""
+        url = reverse('api-publication-interesting-papers')
+        response = self.client.get(url)
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['count'], 2)
+        self.assertTrue(response.data['results'][0]['interesting_paper'])
+    
+    def test_ordering_by_year(self):
+        """Test ordering publications by year."""
+        url = reverse('api-publication-list')
+        response = self.client.get(url, {'ordering': 'year'})
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        results = response.data['results']
+        self.assertEqual(results[0]['year'], 1960)  # Earlier year first
+        self.assertEqual(results[1]['year'], 2005)
+    
+    def test_pagination(self):
+        """Test pagination works correctly."""
+        # Create more publications to test pagination
+        for i in range(25):
+            Publication.objects.create(
+                title=f'Publication {i}',
+                year=2023,
+                type='journal-article',
+                preprint=False,
+                laboratory_paper=False,
+                interesting_paper=True,
+            )
+        
+        url = reverse('api-publication-list')
+        response = self.client.get(url)
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['results']), 20)  # Page size
+        self.assertIsNotNone(response.data['next'])  # Has next page  
+
+class PublicationFilterTest(TestCase):
+    """Test cases for Publication filters."""
+
+    fixtures = ['test_publication', 'test_publication_personnel']
+    
+    def setUp(self):
+        """Set up test data."""
+        self.publication1 = Publication.objects.create(
+            title='First Publication',
+            journal='Nature',
+            year=2023,
+            type='journal-article',
+            laboratory_paper=True,
+            preprint=False,
+            interesting_paper=False,
+        )
+        
+        self.publication2 = Publication.objects.create(
+            title='Second Publication',
+            journal='Science',
+            year=2022,
+            type='book-section',
+            laboratory_paper=False,
+            preprint=False,
+            interesting_paper=False,
+        )
+    
+    def test_year_filter(self):
+        """Test filtering by exact year."""
+        filter_set = PublicationFilter(data={'year': 2023})
+        queryset = filter_set.qs
+        
+        self.assertEqual(queryset.count(), 1)
+        self.assertEqual(queryset.first().year, 2023)
+    
+    def test_year_range_filter(self):
+        """Test filtering by year range."""
+        filter_set = PublicationFilter(data={'year_after': 2022, 'year_before': 2023})
+        queryset = filter_set.qs
+        
+        self.assertEqual(queryset.count(), 2)
+    
+    def test_type_filter(self):
+        """Test filtering by publication type."""
+        filter_set = PublicationFilter(data={'type': 'journal-article'})
+        queryset = filter_set.qs
+        
+        self.assertEqual(queryset.count(), 3)
+        self.assertEqual(queryset.first().type, 'journal-article')
+    
+    def test_laboratory_paper_filter(self):
+        """Test filtering by laboratory_paper flag."""
+        filter_set = PublicationFilter(data={'laboratory_paper': True})
+        queryset = filter_set.qs
+        
+        self.assertEqual(queryset.count(), 2)
+        self.assertTrue(queryset.first().laboratory_paper)
+    
+    def test_journal_filter(self):
+        """Test filtering by journal name."""
+        filter_set = PublicationFilter(data={'journal': 'Nature'})
+        queryset = filter_set.qs
+        
+        self.assertEqual(queryset.count(), 1)
+        self.assertEqual(queryset.first().journal, 'Nature')                     

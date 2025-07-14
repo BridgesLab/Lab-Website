@@ -2,11 +2,12 @@
 
 from django.urls import path, re_path
 from papers import views
+from django.urls import path, include
 
 urlpatterns = [
     path('interesting/', views.InterestingPaperList.as_view(), name="interesting-papers"),
     path('new/', views.PaperCreate.as_view(), name="paper-new"),
-    # path('journal-club/', views.JournalClubList.as_view(), name="jc-list"),
+    path('journal-club/', views.JournalClubList.as_view(), name="jc-list"),
     path('commentaries/', views.CommentaryList.as_view(), name='commentary-list'),
     path('commentary/', views.CommentaryList.as_view(), name='commentary-list'),
     path('commentary/new/', views.CommentaryCreate.as_view(), name='commentary-new'),

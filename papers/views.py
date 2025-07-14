@@ -8,8 +8,18 @@ from django.views.generic.list import ListView
 from django.template import RequestContext
 from django.views.generic.edit import CreateView, UpdateView, DeleteView
 from django.urls import reverse_lazy
+from django.db.models import Q
 
 from django.contrib.auth.mixins import PermissionRequiredMixin
+
+from rest_framework import viewsets, status
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework.filters import SearchFilter, OrderingFilter
+from django_filters.rest_framework import DjangoFilterBackend
+
+from .serializers import PublicationSerializer, PublicationListSerializer
+from .filters import PublicationFilter
 
 from papers.models import Publication, Commentary, JournalClubArticle
 from papers.context_processors import api_keys
@@ -142,3 +152,105 @@ class CommentaryDelete(PermissionRequiredMixin, DeleteView):
     template_name = 'confirm_delete.html'
     template_object_name = 'object'
     success_url = reverse_lazy('commentary-list') 
+
+class PublicationViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet for Publication model providing read-only API access.
+    
+    Provides endpoints for:
+    - GET /api/v2/publications/ - List all publications
+    - GET /api/v2/publications/{id}/ - Retrieve single publication
+    - GET /api/v2/publications/set/{ids}/ - Retrieve multiple publications by IDs
+    
+    Supports filtering by:
+    - year: Exact year match
+    - type: Publication type (exact or contains)
+    - laboratory_paper: Boolean filter
+    - search: Full-text search across title, abstract, journal
+    
+    Supports ordering by:
+    - year, title, journal, date_added, date_last_modified
+    
+    Default ordering: -date_added (newest first)
+    """
+    
+    queryset = Publication.objects.all()
+    serializer_class = PublicationSerializer
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_class = PublicationFilter
+    search_fields = ['title', 'abstract', 'journal']
+    ordering_fields = ['year', 'title', 'journal', 'date_added', 'date_last_modified']
+    ordering = ['-date_added']
+    
+    def get_serializer_class(self):
+        """
+        Return appropriate serializer class based on action.
+        
+        Uses PublicationListSerializer for list view to optimize performance
+        by excluding large text fields like abstract.
+        """
+        if self.action == 'list':
+            return PublicationListSerializer
+        return PublicationSerializer
+    
+    @action(detail=False, methods=['get'], url_path='set/(?P<ids>[^/]+)')
+    def get_set(self, request, ids=None):
+        """
+        Retrieve multiple publications by their IDs.
+        
+        Args:
+            ids: Comma-separated list of publication IDs
+            
+        Returns:
+            List of publications matching the provided IDs
+            
+        Example:
+            GET /api/v1/publications/set/1,3,5/
+        """
+        try:
+            id_list = [int(id.strip()) for id in ids.split(',') if id.strip()]
+        except ValueError:
+            return Response(
+                {'error': 'Invalid ID format. Use comma-separated integers.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        publications = self.get_queryset().filter(id__in=id_list)
+        serializer = self.get_serializer(publications, many=True)
+        
+        return Response({
+            'count': len(serializer.data),
+            'results': serializer.data
+        })
+    
+    @action(detail=False, methods=['get'])
+    def laboratory_papers(self, request):
+        """
+        Retrieve all laboratory papers.
+        
+        Returns:
+            List of publications where laboratory_paper=True
+        """
+        publications = self.get_queryset().filter(laboratory_paper=True)
+        serializer = self.get_serializer(publications, many=True)
+        
+        return Response({
+            'count': len(serializer.data),
+            'results': serializer.data
+        })
+    
+    @action(detail=False, methods=['get'])
+    def interesting_papers(self, request):
+        """
+        Retrieve all interesting papers.
+        
+        Returns:
+            List of publications where interesting_paper=True
+        """
+        publications = self.get_queryset().filter(interesting_paper=True)
+        serializer = self.get_serializer(publications, many=True)
+        
+        return Response({
+            'count': len(serializer.data),
+            'results': serializer.data
+        })
