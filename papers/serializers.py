@@ -32,6 +32,7 @@ class PublicationSerializer(serializers.ModelSerializer):
         - pmcid: PubMed Central ID
         - laboratory_paper: Whether paper is from this laboratory
         - interesting_paper: Whether paper is marked as interesting
+        - preprint: Whether paper is a preprint
         - date_added: Date added to database
         - date_last_modified: Last modification date
         - absolute_url: URL path to publication page
@@ -57,6 +58,7 @@ class PublicationSerializer(serializers.ModelSerializer):
             'pmcid',
             'laboratory_paper',
             'interesting_paper',
+            'preprint',
             'date_added',
             'date_last_modified',
             'absolute_url',
@@ -94,6 +96,7 @@ class PublicationListSerializer(PublicationSerializer):
             'pmcid',
             'laboratory_paper',
             'interesting_paper',
+            'preprint',
             'date_added',
             'date_last_modified',
             'absolute_url',
