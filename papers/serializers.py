@@ -30,8 +30,6 @@ class PublicationSerializer(serializers.ModelSerializer):
         - doi: Digital Object Identifier
         - pmid: PubMed ID
         - pmcid: PubMed Central ID
-        - mendeley_id: Mendeley identifier
-        - mendeley_url: Mendeley URL
         - laboratory_paper: Whether paper is from this laboratory
         - interesting_paper: Whether paper is marked as interesting
         - date_added: Date added to database
@@ -57,8 +55,6 @@ class PublicationSerializer(serializers.ModelSerializer):
             'doi',
             'pmid',
             'pmcid',
-            'mendeley_id',
-            'mendeley_url',
             'laboratory_paper',
             'interesting_paper',
             'date_added',
