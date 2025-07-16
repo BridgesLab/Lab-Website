@@ -29,3 +29,6 @@ venv/
 
 #node modules for css build
 node_modules/*
+
+conda_env/
+static/
