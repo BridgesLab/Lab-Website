@@ -125,7 +125,7 @@ class IndexView(TemplateView):
         
         # Context data
         context['recent_papers'] = Publication.objects.filter(laboratory_paper=True)[:5]
-        context['recent_posts'] = Post.objects.all()[:10]
+        context['recent_posts'] = Post.objects.all()[:5]
         context['recent_comments'] = Commentary.objects.all()[:5]
         context['journal_article_list'] = JournalClubArticle.objects.all()[:5]
         context['general_data'] = facebook_request(general_request_url)
