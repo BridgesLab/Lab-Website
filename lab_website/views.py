@@ -91,14 +91,12 @@ class IndexView(TemplateView):
             return processed_posts
         
         def format_facebook_date(date_string):
-            '''Format Facebook date string to a more readable format.'''
+            '''Parse Facebook date string to a datetime object.'''
             if not date_string:
-                return ''
-                
+                return None
             try:
-                # Facebook returns dates in ISO format like "2024-01-15T10:30:00+0000"
-                dt = datetime.fromisoformat(date_string.replace('Z', '+00:00'))
-                return dt.strftime('%B %d, %Y at %I:%M %p')
+        # Facebook returns dates in ISO format like "2024-01-15T10:30:00+0000"
+                return datetime.fromisoformat(date_string.replace('Z', '+00:00'))
             except (ValueError, AttributeError):
                 return date_string
         
