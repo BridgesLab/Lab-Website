@@ -77,7 +77,7 @@
         </div>
       </section>
 
-      <!-- News Section -->
+     <!-- News Section -->
       <section id='news' class="mb-4 flex-grow-0">
         <div class="card h-100">
           <div class="card-header">
@@ -105,17 +105,26 @@
                         <a href="{{ news_item.permalink_url }}" 
                            target="_blank" 
                            rel="noopener noreferrer"
-                           class="btn btn-primary btn-sm">
-                          <i class="bi bi-chat-square-text"></i> View Post
+                           class="btn btn-secondary btn-sm">
+                          <i class="bi bi-chat-square-text"></i> Post
                         </a>
                       {% endif %}
                       {% if news_item.shared_link %}
                         <a href="{{ news_item.shared_link }}" 
                            target="_blank" 
                            rel="noopener noreferrer"
-                           class="btn btn-secondary btn-sm">
+                           class="btn btn-primary btn-sm">
                           <i class="bi bi-link-45deg"></i> Shared Link
                         </a>
+                      {% endif %}
+                      {% if news_item.full_picture %}
+                        <button type="button"
+                                class="btn btn-outline-primary btn-sm"
+                                data-bs-toggle="modal"
+                                data-bs-target="#imageLightboxModal"
+                                data-image="{{ news_item.full_picture }}">
+                          <i class="bi bi-image"></i> Photo
+                        </button>
                       {% endif %}
                     </div>
                   </div>
@@ -132,6 +141,33 @@
           </div>
         </div>
       </section>
+
+      <!-- Image Lightbox Modal -->
+      <div class="modal fade" id="imageLightboxModal" tabindex="-1" aria-labelledby="imageLightboxModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+          <div class="modal-content">
+            <div class="modal-header">
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <img id="lightboxImage" src="" class="img-fluid" alt="Post Image">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- JavaScript for Lightbox -->
+      <script>
+        document.addEventListener('DOMContentLoaded', function () {
+          const lightboxModal = document.getElementById('imageLightboxModal');
+          lightboxModal.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            const imageUrl = button.getAttribute('data-image');
+            const lightboxImage = document.getElementById('lightboxImage');
+            lightboxImage.src = imageUrl;
+          });
+        });
+      </script>
     </div>
 
     <!-- Right Column: Journal Club -->
