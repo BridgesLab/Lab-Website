@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 
 {% block title %}
-<title>Bridges Lab Homepage</title>
+<title>{{ lab_name }} Homepage</title>
 <meta name="description" content="{{ general_data.about }}">
 {% endblock title %}
 
@@ -14,14 +14,15 @@
   <div class="row">
     <div class="col-sm-3"><img src="{{ general_data.picture.data.url }}" class="img-fluid" alt="{{ lab_name }} Photo"></div>
     <div class="col-sm-6 lead"><p>{{ general_data.description }}</p></div>
-    <div class="col-sm-3">      <p class="text-center lead" style="background-color: var(--brand-accent);color: white; padding: 1rem; margin: 1rem 0; ">Find Out More About Us</p>
+    <div class="col-sm-3">
+      <p class="text-center lead" style="background-color: var(--brand-accent);color: white; padding: 1rem; margin: 1rem 0;">Find Out More About Us</p>
       <ul id="home-links">
         <li><a class="text-center" href="{% url 'laboratory-personnel' %}"><img src="{{ STATIC_URL }}img/icons/user.png" alt="People"> The members of our group.</a></li>
         <li><a class="text-center" href="{% url 'project-list' %}"><img src="{{ STATIC_URL }}img/icons/paste.png" alt="Projects"> The projects we are working on.</a></li>
         <li><a class="text-center" href="{% url 'laboratory-papers' %}"><img src="{{ STATIC_URL }}img/icons/file.png" alt="Papers"> Papers we have published.</a></li>
         <li><a class="text-center" href="{% url 'location' %}"><img src="{{ STATIC_URL }}img/icons/world.png" alt="Location"> Where we are located.</a></li>
         <li><a class="text-center" href="{% url 'contact-info' %}"><img src="{{ STATIC_URL }}img/icons/email.png" alt="Contact"> How to contact us.</a></li>
-       </ul>
+      </ul>
     </div>
   </div>
 </div>
@@ -30,108 +31,103 @@
 
 <section id='recent-papers' class='container-xl'>
   <div class="card">
-  <div class="card-header">
-    <h2 class='text-center card-title display-6'><a href="{% url 'laboratory-papers' %}" class="text-decoration-none text-dark">Recent Publications</a></h2>
+    <div class="card-header">
+      <h2 class='text-center card-title display-6'><a href="{% url 'laboratory-papers' %}" class="text-decoration-none text-dark">Recent Publications</a></h2>
+    </div>
+    <div class="card-body">
+      {% for paper in recent_papers %}
+      {% include "paper-detail-snippet.html" %}
+      {% endfor %}
+      <p class="card-text mt-4 fw-bold">Click <a href="{% url 'laboratory-papers' %}">here</a> for a list of papers.</p>
+    </div>
   </div>
-<div class="card-body">
-  {% for paper in recent_papers %}
-  {% include "paper-detail-snippet.html" %}
-  {% endfor %}
-<p class="card-text mt-4 fw-bold">Click <a href="{% url 'laboratory-papers' %}">here</a> for a list of papers.</p>
-</div>
-</div>
 </section>
 
 <!-- Two columns on large screens, one column on small screens -->
 <div class="container-md">
-<div class="row">
-  
-  <!-- Blog Posts Column -->
-  <section id='posts' class="col-lg-6 col-12 mb-4">
-    <div class="card h-100">
-      <div class="card-header">
-        <h2 class='text-center card-title display-6'><a href="{% url 'post-list' %}" class="text-decoration-none text-dark">Blog Posts</a></h2>
-      </div>
-      <div class="card-body">
-        <ul class="list-unstyled">
-        {% for post in recent_posts %}
-        <li><a href="{{ post.get_absolute_url }}">{{ post }}</a></li>
-        {% endfor %}
-        </ul>
-              <p class="card-text mt-4 fw-bold">
-        Click <a href="{% url 'post-list' %}" 
-                 target="_blank" 
-                 rel="noopener noreferrer">here</a> for a list of posts.
-      </p>
-      </div>
-    </div>
-  </section>
-
-  <!-- Journal Club Column -->
-  <section id="journal-club" class="col-lg-6 col-12 mb-4">
-    <div class="card h-100">
-      <div class="card-header">
-        <h2 class='text-center card-title display-6'><a href="{% url 'jc-list' %}" class="text-decoration-none text-dark">{{lab_name}} Journal Club</a></h2>
-      </div>
-      <div class="card-body">
-        {% include "journal-club-paper-snippet.html" %}
-        <p class="card-text mt-4 fw-bold">Click <a href="{% url 'jc-list' %}">here</a> for a list of journal club articles.</p>
-      </div>
-    </div>
-  </section>
-
-<section id='news' class='container-xl'>
-  <div class="card">
-    <div class="card-header">
-      <h2 class='text-center card-title display-6'>News</h2>
-    </div>
-    <div class="card-body">
-      {% if news %}
-        {% for news_item in news|slice:"5" %}
-          <div class="news-item mb-4 pb-3 border-bottom">
-            
-            <!-- Post content -->
-            {% if news_item.message %}
-              <div class="news-content mb-3">
-                {{ news_item.message|safe }}
-              </div>
-            {% endif %}
-
-            <!-- Date -->
-            {% if news_item.created_time %}
-              <p class="text-muted small mb-2">
-                <i class="fas fa-clock"></i> {{ news_item.created_time }}
-              </p>
-            {% endif %}
-            
-            <!-- Post actions -->
-            <div class="news-actions">
-              {% if news_item.permalink_url %}
-                <a href="{{ news_item.permalink_url }}" 
-                   target="_blank" 
-                   rel="noopener noreferrer"
-                   class="btn btn-outline-primary btn-sm">
-                  <i class="fab fa-facebook"></i> View on Facebook
-                </a>
-              {% endif %}
-              
-            </div>
+  <div class="row">
+    <!-- Left Column: Blog Posts and News -->
+    <div class="col-lg-6 col-12 d-flex flex-column">
+      <!-- Blog Posts Section -->
+      <section id='posts' class="mb-4 flex-grow-0">
+        <div class="card h-100">
+          <div class="card-header">
+            <h2 class='text-center card-title display-6'><a href="{% url 'post-list' %}" class="text-decoration-none text-dark">Blog Posts</a></h2>
           </div>
-        {% endfor %}
-      {% else %}
-        <p class="text-muted text-center">No recent news available.</p>
-      {% endif %}
-      
-      <p class="card-text mt-4 fw-bold">
-        Click <a href="https://www.facebook.com/{{settings.FACEBOOK_NAME}}" 
-                 target="_blank" 
-                 rel="noopener noreferrer">here</a> for our Facebook page.
-      </p>
-    </div>
-  </div>
-</section>
+          <div class="card-body">
+            <ul class="list-unstyled">
+              {% for post in recent_posts %}
+              <li><a href="{{ post.get_absolute_url }}">{{ post }}</a></li>
+              {% endfor %}
+            </ul>
+            <p class="card-text mt-4 fw-bold">
+              Click <a href="{% url 'post-list' %}" target="_blank" rel="noopener noreferrer">here</a> for a list of posts.
+            </p>
+          </div>
+        </div>
+      </section>
 
-</div>
+      <!-- News Section -->
+      <section id='news' class="mb-4 flex-grow-0">
+        <div class="card h-100">
+          <div class="card-header">
+            <h2 class='text-center card-title display-6'>News</h2>
+          </div>
+          <div class="card-body">
+            {% if news %}
+              {% for news_item in news|slice:":5" %}
+                <div class="news-item mb-4 pb-3 border-bottom">
+                  <!-- Post content -->
+                  {% if news_item.message %}
+                    <div class="news-content mb-3">
+                      {{ news_item.message|safe }}
+                    </div>
+                  {% endif %}
+                  <!-- Date -->
+                  {% if news_item.created_time %}
+                    <p class="text-muted small mb-2">
+                      <i class="fas fa-clock"></i> {{ news_item.created_time }}
+                    </p>
+                  {% endif %}
+                  <!-- Post actions -->
+                  <div class="news-actions">
+                    {% if news_item.permalink_url %}
+                      <a href="{{ news_item.permalink_url }}" 
+                         target="_blank" 
+                         rel="noopener noreferrer"
+                         class="btn btn-outline-primary btn-sm">
+                        <i class="fab fa-facebook"></i> View on Facebook
+                      </a>
+                    {% endif %}
+                  </div>
+                </div>
+              {% endfor %}
+            {% else %}
+              <p class="text-muted text-center">No recent news available.</p>
+            {% endif %}
+            <p class="card-text mt-4 fw-bold">
+              Click <a href="https://www.facebook.com/{{settings.FACEBOOK_NAME}}" 
+                       target="_blank" 
+                       rel="noopener noreferrer">here</a> for our Facebook page.
+            </p>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Right Column: Journal Club -->
+    <section id="journal-club" class="col-lg-6 col-12 mb-4">
+      <div class="card h-100">
+        <div class="card-header">
+          <h2 class='text-center card-title display-6'><a href="{% url 'jc-list' %}" class="text-decoration-none text-dark">Journal Club</a></h2>
+        </div>
+        <div class="card-body">
+          {% include "journal-club-paper-snippet.html" %}
+          <p class="card-text mt-4 fw-bold">Click <a href="{% url 'jc-list' %}">here</a> for a list of journal club articles.</p>
+        </div>
+      </div>
+    </section>
+  </div>
 </div>
 
 </article>
