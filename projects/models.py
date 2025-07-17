@@ -8,6 +8,8 @@ from django.template.defaultfilters import slugify
 
 from personnel.models import Person
 from papers.models import Publication
+from django.urls import reverse
+
 
 class Project(models.Model):
     '''This model covers :class:`~projects.models.Projects`.
@@ -26,12 +28,10 @@ class Project(models.Model):
         
     current_personnel = models.ManyToManyField(Person, 
         blank=True, 
-        null=True, 
         help_text="Who is currently working on this project?",
         related_name = 'current_personnel')
     past_personnel = models.ManyToManyField(Person, 
         blank=True, 
-        null=True,
         help_text="Who previously worked on this project?",
         related_name = 'previous_personnel')   
              
@@ -45,12 +45,10 @@ class Project(models.Model):
     
     publications = models.ManyToManyField(Publication,
         blank=True,
-        null=True,
         help_text = "What papers have we written for this project?",
         related_name="publications")
     other_publications = models.ManyToManyField(Publication,
         blank=True,
-        null=True,
         help_text = "What key papers have others written about this project?",
         related_name ="other_publications") 
            
@@ -58,14 +56,13 @@ class Project(models.Model):
     date_last_modified = models.DateField(auto_now=True)
     date_added = models.DateField(auto_now_add=True)      
     
-    def __unicode__(self):
-        '''The unicode representation for a :class:`~projects.models.Project` is its title'''
+    def __str__(self):
+        '''The string representation for a :class:`~projects.models.Project` is its title'''
         return self.title
         
-    @models.permalink
     def get_absolute_url(self):
         '''the permalink for a project detail page is **/projects/<title_slug>**'''
-        return ('project-details', [str(self.title_slug)])   
+        return reverse('project-details', args=[str(self.title_slug)]) 
 
     def save(self, *args, **kwargs):
         '''The title is slugified upon saving into title_slug.'''
@@ -73,8 +70,11 @@ class Project(models.Model):
             self.title_slug = slugify(self.title)
         super(Project, self).save(*args, **kwargs)
     
+    @property
     def summary_intro(self):
-        return self.summary.split('\n')
+        if self.summary:
+            return self.summary.split('\n')
+        return []
     
     class Meta:
         '''The meta options for the :class:`projects.models.Project` model is ordering set by priority then secondarily by the date_last_modified.'''
@@ -101,7 +101,8 @@ class Funding(models.Model):
     funding_agency = models.ForeignKey('FundingAgency',
         help_text="What was the funding agency",
         blank=True,
-        null=True)
+        null=True,
+        on_delete=models.SET_NULL)
     start_date = models.DateField(help_text="The start date of this award",
         blank=True, 
         null=True)
@@ -116,26 +117,23 @@ class Funding(models.Model):
         null=True)
     publications = models.ManyToManyField(Publication,
         help_text="Which publications are associated with this award?",
-        blank=True,
-        null=True)
+        blank=True)
     projects = models.ManyToManyField(Project,
         help_text="Which projects are associated with this award?",
-        blank=True,
-        null=True)   
+        blank=True)   
     active = models.BooleanField(help_text="Is this funding active?")
         
     #these fields are automatically generated.    
     date_last_modified = models.DateField(auto_now=True)
     date_added = models.DateField(auto_now_add=True)            
         
-    def __unicode__(self):
+    def __str__(self):
         '''The unicode representation for a :class:`~projects.models.Funding` is its title'''
         return self.title
         
-    @models.permalink
     def get_absolute_url(self):
         '''the permalink for a funding detail page is **/funding/<title_slug>**'''
-        return ('funding-details', [str(self.title_slug)])   
+        return reverse('funding-details', args=[str(self.title_slug)]) 
 
     def save(self, *args, **kwargs):
         '''The title is slugified upon saving into title_slug.'''
@@ -162,6 +160,6 @@ class FundingAgency(models.Model):
         blank=True,
         null=True)
         
-    def __unicode__(self):
-        '''The unicode representation for a :class:`~projects.models.FundingAgency` is its name'''
+    def __str__(self):
+        '''The string representation for a :class:`~projects.models.FundingAgency` is its name'''
         return self.name

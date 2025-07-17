@@ -23,3 +23,12 @@ photos/
 media/
 
 test_database2
+venv/
+*.bak
+.coverage
+
+#node modules for css build
+node_modules/*
+
+conda_env/
+static/

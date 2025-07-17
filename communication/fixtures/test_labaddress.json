@@ -1,0 +1,10 @@
+[
+  {
+    "model": "communication.labaddress",
+    "pk": 1,
+    "fields": {
+      "type": "Primary",
+      "address": 1
+    }
+  }
+]

@@ -26,23 +26,18 @@ class BasicTests(TestCase):
         self.test_user.save()
         self.assertEqual(self.test_user.is_superuser, True)
         login = self.client.login(username='testuser', password='testpassword')
-        self.failUnless(login, 'Could not log in')
-
-    def tearDown(self):
-        """Depopulate created model instances from test database."""
-        for model in MODELS:
-            for obj in model.objects.all():
-                obj.delete()
+        self.assertTrue(login, 'Could not log in')
                 
 class HomeViewTests(BasicTests):
     '''This class tests the views associated with the :mod:`communication` app.'''
     
+    fixtures = ['test_address','test_labaddress']
     
     def test_feed_details_view(self):
         """This tests the feed-details view, ensuring that templates are loaded correctly.  
 
         This view uses a user with superuser permissions so does not test the permission levels for this view."""
-        
+
         test_response = self.client.get('/')
         self.assertEqual(test_response.status_code, 200)       
         self.assertTemplateUsed(test_response, 'index.html')

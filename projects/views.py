@@ -13,9 +13,9 @@ from django.views.generic.detail import DetailView
 from django.views.generic.list import ListView
 from django.template import RequestContext
 from django.views.generic.edit import CreateView, UpdateView, DeleteView
-from django.core.urlresolvers import reverse_lazy
+from django.urls import reverse_lazy
 
-from braces.views import LoginRequiredMixin, PermissionRequiredMixin
+from django.contrib.auth.mixins import PermissionRequiredMixin
 
 from projects.models import Project, Funding
 from papers.context_processors import api_keys

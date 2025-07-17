@@ -17,6 +17,7 @@ from django.db import models
 from django.template.defaultfilters import slugify
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
+from django.urls import reverse
 
 GENDER_CHOICES = (
     ('M', 'Male'),
@@ -70,11 +71,19 @@ class Person(models.Model):
     image = models.ImageField(upload_to='photos/%Y/%m/%d', 
         blank=True, 
         null=True)
-    degrees = models.ManyToManyField('Degree', help_text="Graduate and Undergraduate Degrees", blank=True, null=True)
-    awards = models.ManyToManyField('Award', blank=True, null=True)
+    degrees = models.ManyToManyField('Degree', help_text="Graduate and Undergraduate Degrees", blank=True)
+    awards = models.ManyToManyField('Award', blank=True)
     birthdate = models.DateField(blank=True, null=True)
-    home_address = models.ForeignKey('Address', blank=True, null=True, related_name='home_address')
-    work_address = models.ForeignKey('Address', blank=True, null=True, related_name='work_address')
+    home_address = models.ForeignKey('Address', 
+                                     blank=True, 
+                                     null=True, 
+                                     related_name='home_address', 
+                                     on_delete=models.SET_NULL)
+    work_address = models.ForeignKey('Address', 
+                                     blank=True, 
+                                     null=True, 
+                                     related_name='work_address',
+                                     on_delete=models.SET_NULL)
     #these fields describe social networking usernames or id numbers
     orcid_id = models.CharField(max_length=19, 
         blank=True, null=True, 
@@ -86,24 +95,30 @@ class Person(models.Model):
     #these fields describe the role while in the laboratory or either before/after their time there.
     alumni = models.BooleanField(help_text="Is this person a key alumni from the lab")
     current_lab_member = models.BooleanField(help_text="Is this person currently in the lab")
-    lab_roles = models.ManyToManyField('Role', help_text="Position(s) in the laboratory", blank=True, null=True, related_name='lab_role')
+    lab_roles = models.ManyToManyField('Role', 
+                                       help_text="Position(s) in the laboratory", 
+                                       blank=True, 
+                                       related_name='lab_role')
     #these fields describe updating information and are automatically filled
     created = models.DateField(auto_now_add=True)
     updated = models.DateField(auto_now=True)
     name_slug = models.SlugField(editable=False)
-    user = models.OneToOneField(User, blank=True, null=True, help_text="Username for this person")
+    user = models.OneToOneField(User, 
+                                blank=True, 
+                                null=True, 
+                                help_text="Username for this person",
+                                on_delete=models.SET_NULL)
     
-    def __unicode__(self):
-        '''The unicode representation for a Personnel object is its full name'''
+    def __str__(self):
+        '''The string representation for a Personnel object is its full name'''
         return self.full_name()
         
-    @models.permalink
     def get_absolute_url(self):
         '''the permalink for a paper detail page is /personnel/[name_slug]'''
-        return ('personnel-details', [str(self.name_slug)])   
+        return reverse('personnel-details', args=[str(self.name_slug)])
     
     def full_name(self):
-        '''this function creates a full_name representation for both unicode and slug field displays.'''
+        '''this function creates a full_name representation for both string and slug field displays.'''
         if self.last_name is None:
             return "No Name Given"
         else:
@@ -130,28 +145,32 @@ class Role(models.Model):
     ''''This model describes the type of job a ::class`LabMember` had.
     
     A laboratory member could have one or more Roles over time.'''
-    job_type = models.ForeignKey('JobType', max_length=50)
+    job_type = models.ForeignKey('JobType', max_length=50,on_delete=models.PROTECT)
     start_date = models.DateField(blank=True, null=True)
     end_date = models.DateField(blank=True, null=True)
-    graduation_status = models.NullBooleanField(help_text='It this was a student role, did this person graduate?')
+    graduation_status = models.BooleanField(null=True, 
+                                            blank=True,
+                                            help_text='It this was a student role, did this person graduate?')
     graduation_date = models.DateField(blank=True, null=True)
-    degree = models.ManyToManyField('Degree', blank=True, null=True)  
-    organization = models.ForeignKey('Organization')
+    degree = models.ManyToManyField('Degree', 
+                                    blank=True)  
+    organization = models.ForeignKey('Organization',
+                                     on_delete=models.PROTECT)
     public = models.BooleanField(help_text='Should this role be displayed publicly?')
     
-    def __unicode__(self):
-        '''The unicode representation for a Role object is the jobtype'''
-        if (self.start_date != None and
-            self.end_date == None):
-            return u"<strong>%s</strong>, %s since %s" %(self.job_type, self.organization, self.start_date) 
-        elif (self.start_date == None and
-            self.end_date != None):
-            return u"<strong>%s</strong>, %s until %s" %(self.job_type, self.organization, self.end_date) 
-        elif (self.start_date != None and
-            self.end_date != None):
-            return u"<strong>%s</strong>, %s from %s to %s" %(self.job_type, self.organization, self.start_date, self.end_date) 
+    def __str__(self):
+        '''The string representation for a Role object is the jobtype'''
+        if (self.start_date is not None and
+            self.end_date is None):
+            return f"<strong>{self.job_type}</strong>, {self.organization} since {self.start_date}"
+        elif (self.start_date is None and
+            self.end_date is not None):
+            return f"<strong>{self.job_type}</strong>, {self.organization} until {self.end_date}"
+        elif (self.start_date is not None and
+            self.end_date is not None):
+            return f"<strong>{self.job_type}</strong>, {self.organization} from {self.start_date} to {self.end_date}"
         else:
-            return u"<strong>%s</strong>, %s" %(self.job_type, self.organization)
+            return f"<strong>{self.job_type}</strong>, {self.organization}"
             
     class Meta:
         '''The meta options for Role models.'''
@@ -167,9 +186,9 @@ class JobType(models.Model):
     student_status = models.BooleanField(help_text='Is this person a student?', verbose_name="Student?")    
     employee_status = models.BooleanField(help_text='Is this person an employee?', verbose_name="Employee?")
     
-    def __unicode__(self):
-        '''The unicode representation for a JobType object is the title'''
-        return u'%s' %self.job_title
+    def __str__(self):
+        '''The string representation for a JobType object is the title'''
+        return self.job_title
         
 class Degree(models.Model):
     '''This model describes degrees, undergraduate and graduate.
@@ -178,19 +197,22 @@ class Degree(models.Model):
     degree = models.CharField(max_length=100, help_text="Long form name of the degree")
     field_of_study = models.CharField(max_length=100, help_text="What general field was this?")
     abbreviation = models.CharField(max_length=10, help_text="Abbreviation for degree name, ie Ph.D.")
-    organization = models.ForeignKey('Organization', help_text="Where was this degree obtained from?")
+    organization = models.ForeignKey('Organization', 
+                                     help_text="Where was this degree obtained from?",
+                                     on_delete=models.PROTECT)
     date_awarded = models.DateField(blank=True, null=True, help_text="When was the degree awarded?")
     notes = models.TextField(blank=True, null=True, help_text="Some notes on what you did during this degree")
 
-    def __unicode__(self):
-        '''The unicode representation for a Degree is the abbreviation and the organization'''
-        return u"%s (%s)" %(self.abbreviation, self.organization)
+    def __str__(self):
+        '''The string representation for a Degree is the abbreviation and the organization'''
+        return "%s (%s)" %(self.abbreviation, self.organization)
 
 class Award(models.Model):
     '''This model describes awards that lab personnel has won.'''
     name = models.CharField(max_length=100, unique=True)
     date = models.DateField(blank=True, null=True)
-    organization = models.ForeignKey('Organization')
+    organization = models.ForeignKey('Organization',
+                                    on_delete=models.PROTECT)
     
 class Organization(models.Model):
     '''This class describes an business, institution or other organization.'''   
@@ -200,9 +222,9 @@ class Organization(models.Model):
         help_text="Name of the Department or Group")
     type = models.CharField(choices=ORGANIZATION_TYPE_CHOICES, max_length=100)
     
-    def __unicode__(self):
-        '''The unicode representation for an Organization object is the department and the institution separated by a linebreak'''
-        return u'%s, %s' %(self.department, self.name,)
+    def __str__(self):
+        '''The string representation for an Organization object is the department and the institution separated by a linebreak'''
+        return '%s, %s' %(self.department, self.name,)
     
 class Address(models.Model):
     '''This class describes an address.'''
@@ -215,9 +237,9 @@ class Address(models.Model):
     country = models.CharField(max_length=100, help_text="Use standard country codes, see <a href="">here<a>.")
     code = models.CharField(max_length=15, blank=True, null=True, help_text="zip or postal code")
     
-    def __unicode__(self):
-        '''The unicode representation of an Address is the address lines followed by linebreaks.'''
-        return u'%s\n%s\n%s\n%s\n%s, %s, %s, %s' %(self.line_1, self.line_2, self.line_3, self.line_4, self.city, self.state, self.country, self.code)
+    def __str__(self):
+        '''The string representation of an Address is the address lines followed by linebreaks.'''
+        return '%s\n%s\n%s\n%s\n%s, %s, %s, %s' %(self.line_1, self.line_2, self.line_3, self.line_4, self.city, self.state, self.country, self.code)
 
 
 class JobPosting(models.Model):
@@ -231,7 +253,10 @@ class JobPosting(models.Model):
     link = models.URLField(help_text="Link to application")
 
     #job details
-    hiringOrganization = models.ForeignKey('Organization', blank=True, null=True)
+    hiringOrganization = models.ForeignKey('Organization', 
+                                           blank=True, 
+                                           null=True,
+                                           on_delete=models.PROTECT)
     education = models.TextField(help_text="Minimum educational requirements", blank=True, null=True)
     qualifications = models.TextField(blank=True, null=True, help_text="What are the other non-educational qualifications for this position")
     responsibilities = models.TextField(blank=True, null=True, help_text="The responsibilities of this job")
@@ -246,9 +271,9 @@ class JobPosting(models.Model):
     created = models.DateField(auto_now_add=True)
     modified = models.DateField(auto_now=True)
 
-    def __unicode__(self):
-        '''The unicode representation is the created field.'''
-        return u'%s Job Posting (%s)' %(self.title, self.created)
+    def __str__(self):
+        '''The string representation is the created field.'''
+        return '%s Job Posting (%s)' %(self.title, self.created)
         
     def expiry(self):
         '''The calculated expiry date, default is 30 days'''

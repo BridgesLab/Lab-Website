@@ -5,6 +5,7 @@ There are two models in this app, :class:`~papers.models.Publication` and :class
 
 from django.db import models
 from django.template.defaultfilters import slugify
+from django.urls import reverse
 
 from personnel.models import Person
 
@@ -43,7 +44,7 @@ class Publication(models.Model):
     '''
     mendeley_url = models.URLField(blank=True, null=True)
     title = models.CharField(max_length=250)
-    authors = models.ManyToManyField('AuthorDetails', blank=True, null=True)
+    authors = models.ManyToManyField('AuthorDetails', blank=True)
     title_slug = models.SlugField(blank=True, null=True, max_length=150, editable=False, unique=True)
     mendeley_id = models.IntegerField(blank=True, null=True)
     doi = models.CharField(blank=True, null=True, max_length=50, help_text="Digital Object Identifier", verbose_name="DOI")
@@ -55,7 +56,7 @@ class Publication(models.Model):
     issue = models.CharField(max_length=15, blank=True, null=True)
     pages = models.CharField(max_length=15, blank=True, null=True)
     abstract = models.TextField(blank=True, null=True)
-    type = models.CharField(choices = PUBLICATION_TYPES, max_length=20, blank=True, null=True)
+    type = models.CharField(choices = PUBLICATION_TYPES, max_length=25, blank=True, null=True)
     laboratory_paper = models.BooleanField(help_text="Is this paper from our lab?")
     interesting_paper = models.BooleanField(help_text="Is this paper of interest but from another lab?")
     publication_date = models.DateField(help_text="The official publicaiton date of the paper", blank=True, null=True)
@@ -80,14 +81,12 @@ class Publication(models.Model):
         else:
             return self.get_absolute_url()       
     
-    def __unicode__(self):
-        '''The unicode representation for a :class:`~papers.models.Publication` is its title'''
+    def __str__(self):
         return self.title
         
-    @models.permalink
     def get_absolute_url(self):
         '''the permalink for a paper detail page is **/papers/<title_slug>**'''
-        return ('paper-details', [str(self.title_slug)])   
+        return reverse('paper-details', args=[str(self.title_slug)]) 
 
     def save(self, *args, **kwargs):
         '''The title is slugified upon saving into title_slug.'''
@@ -107,17 +106,16 @@ class AuthorDetails(models.Model):
     The authors are defined by the :class:`~personnel.models.Person` model class, which is also the UserProfile class.
     This model has a ManyToMany link with a paper as well as marks for order, and whether an author is a corresponding or equally contributing author.
     '''
-    author = models.ForeignKey('personnel.Person')
+    author = models.ForeignKey('personnel.Person',on_delete=models.PROTECT)
     order = models.IntegerField(help_text='The order in which the author appears (do not duplicate numbers)')
     corresponding_author = models.BooleanField()
     equal_contributors = models.BooleanField(help_text='Check both equally contributing authors')
     contribution = models.ManyToManyField('AuthorContributions',
         help_text="Author contribution",
-        blank=True,
-        null=True)
+        blank=True)
                 
-    def __unicode__(self):
-        '''The unicode representation is the author name.'''
+    def __str__(self):
+        '''The string representation is the author name.'''
         return '%i - %s -  %s' %(self.order, self.publication_set.last(), self.author)
     
     def name(self):
@@ -137,8 +135,9 @@ class Commentary(models.Model):
     '''
     author = models.ForeignKey('personnel.Person', 
         blank=True, null=True,
-        help_text="Who was the primary author of this commentary?")
-    paper = models.ForeignKey('Publication')
+        help_text="Who was the primary author of this commentary?",
+        on_delete=models.SET_NULL)
+    paper = models.ForeignKey('Publication',on_delete=models.PROTECT)
     comments = models.TextField(help_text="Comments on this paper")
     citation = models.TextField(blank=True, null=True,
                  help_text="Generate citation at http://scienceseeker.org/generate-citations")
@@ -146,14 +145,13 @@ class Commentary(models.Model):
     created = models.DateField(auto_now_add=True)
     modified = models.DateField(auto_now=True)
 
-    def __unicode__(self):
-        '''The unicode representation is "Commentary on XXX" where XXX is the paper title'''
+    def __str__(self):
+        '''The string representation is "Commentary on XXX" where XXX is the paper title'''
         return "Journal club summary on %s" %self.paper
 
-    @models.permalink
     def get_absolute_url(self):
         '''The permalink of a commentary oage is **commentaries/<pk>**'''
-        return('commentary-detail', [str(self.id)])
+        return reverse('commentary-detail', args=[str(self.id)])
 
     class Meta:
         '''The meta options for this defines the ordering by the created field.'''
@@ -169,7 +167,11 @@ class JournalClubArticle(models.Model):
     
     presentation_date = models.DateField(blank=True, null=True)
     doi = models.CharField(blank=True, null=True, max_length=50, help_text="Digital Object Identifier", verbose_name="DOI")
-    commentary = models.ForeignKey('Commentary', blank=True, null=True, help_text="Did we write comments on this paper?")
+    commentary = models.ForeignKey('Commentary', 
+                                   blank=True, 
+                                   null=True, 
+                                   help_text="Did we write comments on this paper?",
+                                   on_delete=models.SET_NULL)
 
     def doi_link(self):
         '''This turns the DOI into a link.'''
@@ -183,8 +185,8 @@ class JournalClubArticle(models.Model):
         '''The meta options for this defines the ordering by the created field.'''
         ordering = ['-presentation_date',]  
         
-    def __unicode__(self):
-        '''The unicode representation is "Commentary on XXX" where XXX is the paper title'''
+    def __str__(self):
+        '''The string representation is "Commentary on XXX" where XXX is the paper title'''
         return "Journal club article: %s" %self.citation     
 
 class AuthorContributions(models.Model):
@@ -206,6 +208,6 @@ class AuthorContributions(models.Model):
         blank=True,
         null=True)
         
-    def __unicode__(self):
-        '''The unicode representation is the contribution'''
+    def __str__(self):
+        '''The string representation is the contribution'''
         return self.contribution

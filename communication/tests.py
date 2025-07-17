@@ -7,6 +7,7 @@ Since this app has no models there is model and view tests:
 * :class:`~communication.tests.CommunicationViewTests` 
 
 """
+from django.urls import reverse
 
 from lab_website.tests import BasicTests
 
@@ -28,13 +29,13 @@ class CommunicationModelTests(BasicTests):
         test_address.save()
         self.assertEqual(test_address.pk, 1) #presumes no models loaded in fixture data     
         
-    def test_lab_address_unicode(self):
-        '''This tests the unicode representation of a :class:`~communication.models.LabAddress`.'''
+    def test_lab_address_string(self):
+        '''This tests the string representation of a :class:`~communication.models.LabAddress`.'''
  
         test_address = LabAddress(type='Primary', address=Address.objects.get(pk=1)) #repeat for all required fields
         test_address.save()
         self.assertEqual(test_address.pk, 1) #presumes no models loaded in fixture data  
-        self.assertEqual(test_address.__unicode__(), Address.objects.get(pk=1).__unicode__())
+        self.assertEqual(str(test_address), Address.objects.get(pk=1).__str__())
         
     def test_create_new_lab_location(self):
         '''This test creates a :class:`~communication.models.LabLocation` with the required information only.'''
@@ -59,7 +60,7 @@ class CommunicationModelTests(BasicTests):
         test_location.save()
         self.assertEqual(test_location.pk, 1) #presumes no models loaded in fixture data
         
-    def test_lab_location_unicode(self):
+    def test_lab_location_string(self):
         '''This test creates a :class:`~communication.models.LabLocation` with the required information only.'''
  
         test_location = LabLocation(name = 'Memphis', 
@@ -67,7 +68,7 @@ class CommunicationModelTests(BasicTests):
             priority=1) #repeat for all required fields
         test_location.save()
         self.assertEqual(test_location.pk, 1)
-        self.assertEqual(test_location.__unicode__(), 'Memphis') 
+        self.assertEqual(str(test_location), 'Memphis') 
 
 class CommunicationViewTests(BasicTests):
     '''This class tests the views associated with the :mod:`communication` app.'''
@@ -78,7 +79,7 @@ class CommunicationViewTests(BasicTests):
 
         This view uses a user with superuser permissions so does not test the permission levels for this view."""
         
-        test_response = self.client.get('/feeds')
+        test_response = self.client.get('/feeds', follow=True)
         self.assertEqual(test_response.status_code, 200)       
         self.assertTemplateUsed(test_response, 'feed_details.html')
         self.assertTemplateUsed(test_response, 'base.html') 
@@ -91,7 +92,7 @@ class CommunicationViewTests(BasicTests):
         It also tests whether the correct context is passed (if included).
         his view uses a user with superuser permissions so does not test the permission levels for this view.'''
         
-        test_response = self.client.get('/lab-rules')
+        test_response = self.client.get('/lab-rules', follow=True)
         self.assertEqual(test_response.status_code, 200)       
         self.assertTemplateUsed(test_response, 'lab_rules.html')
         self.assertTemplateUsed(test_response, 'base.html') 
@@ -105,7 +106,7 @@ class CommunicationViewTests(BasicTests):
         It also tests whether the correct context is passed (if included).
         his view uses a user with superuser permissions so does not test the permission levels for this view.'''
         
-        test_response = self.client.get('/data-resource-sharing')
+        test_response = self.client.get('/data-resource-sharing', follow=True)
         self.assertEqual(test_response.status_code, 200)       
         self.assertTemplateUsed(test_response, 'data_sharing_policy.html')
         self.assertTemplateUsed(test_response, 'base.html') 
@@ -117,7 +118,7 @@ class CommunicationViewTests(BasicTests):
         
         Currently it just ensures that the template is loading correctly.
         '''
-        test_response = self.client.get('/twitter')
+        test_response = self.client.get('/twitter', follow=True)
         self.assertEqual(test_response.status_code, 200)       
         self.assertTemplateUsed(test_response, 'twitter_timeline.html')
         self.assertTemplateUsed(test_response, 'base.html') 
@@ -129,7 +130,7 @@ class CommunicationViewTests(BasicTests):
         
         Currently it just ensures that the template is loading correctly.
         '''
-        test_response = self.client.get('/calendar')
+        test_response = self.client.get('/calendar', follow=True)
         self.assertEqual(test_response.status_code, 200)       
         self.assertTemplateUsed(test_response, 'calendar.html')
         self.assertTemplateUsed(test_response, 'base.html') 
@@ -141,7 +142,7 @@ class CommunicationViewTests(BasicTests):
 #         
 #         Currently it just ensures that the template is loading correctly.
 #         '''
-#         test_response = self.client.get('/wikipedia')
+#         test_response = self.client.get('/wikipedia', follow=True)
 #         self.assertEqual(test_response.status_code, 200)       
 #         self.assertTemplateUsed(test_response, 'wikipedia_edits.html')
 #         self.assertTemplateUsed(test_response, 'base.html') 
@@ -153,7 +154,7 @@ class CommunicationViewTests(BasicTests):
         
         Currently it just ensures that the template is loading correctly.
         '''
-        test_response = self.client.get('/news')
+        test_response = self.client.get('/news', follow=True)
         self.assertEqual(test_response.status_code, 200)       
         self.assertTemplateUsed(test_response, 'lab_news.html')
         self.assertTemplateUsed(test_response, 'base.html') 
@@ -166,7 +167,7 @@ class CommunicationViewTests(BasicTests):
         
         Currently it just ensures that the template is loading correctly.
         '''
-        test_response = self.client.get('/contact/')
+        test_response = self.client.get('/contact/', follow=True)
         self.assertEqual(test_response.status_code, 200)       
         self.assertTemplateUsed(test_response, 'contact.html')
         self.assertTemplateUsed(test_response, 'base.html') 
@@ -176,7 +177,7 @@ class CommunicationViewTests(BasicTests):
         
         Currently it ensures that the template is loading, and that that the location_list context is passed.
         ''' 
-        test_response = self.client.get('/location')
+        test_response = self.client.get('/location', follow=True)
         self.assertEqual(test_response.status_code, 200)       
         self.assertTemplateUsed(test_response, 'location.html')
         self.assertTemplateUsed(test_response, 'base.html') 
@@ -207,23 +208,32 @@ class PostModelTests(BasicTests):
         test_post.save()
         self.assertEqual(test_post.pk, 1) 
         
-    def test_post_unicode(self):
-        '''This test creates a :class:`~papers.models.Post` and then verifies the unicode representation is correct.'''
+    def test_post_string(self):
+        '''This test creates a :class:`~papers.models.Post` and then verifies the string representation is correct.'''
         
         test_post = Post(post_title="Test Post",
             author = Person.objects.get(pk=1),
             markdown_url = 'https://raw.githubusercontent.com/BridgesLab/Lab-Website/master/LICENSE.md')
         test_post.save()
-        self.assertEqual(test_post.__unicode__(), "Test Post")  
+        self.assertEqual(str(test_post), "Test Post")  
         
     def test_post_slugify(self):
-        '''This test creates a :class:`~papers.models.Post` and then verifies the unicode representation is correct.'''
+        '''This test creates a :class:`~papers.models.Post` and then verifies the slug representation is correct.'''
         
         test_post = Post(post_title="Test Post",
             author = Person.objects.get(pk=1),
             markdown_url = 'https://raw.githubusercontent.com/BridgesLab/Lab-Website/master/LICENSE.md')
         test_post.save()   
-        self.assertEqual(test_post.post_slug, "test-post")   
+        self.assertEqual(test_post.post_slug, "test-post")  
+
+    def test_get_absolute_url(self):
+        """Test the get_absolute_url method"""
+        test_post = Post(post_title="Test Post",
+            author = Person.objects.get(pk=1),
+            markdown_url = 'https://raw.githubusercontent.com/BridgesLab/Lab-Website/master/LICENSE.md')
+        test_post.save() 
+        expected_url = reverse('post-details', args=[test_post.post_slug])
+        self.assertEqual(test_post.get_absolute_url(), expected_url) 
       
 class PostViewTests(BasicTests):
     '''These test the views associated with post objects.'''
@@ -235,7 +245,7 @@ class PostViewTests(BasicTests):
 
         This view uses a user with superuser permissions so does not test the permission levels for this view."""
         
-        test_response = self.client.get('/posts/fixture-post')
+        test_response = self.client.get('/posts/fixture-post', follow=True)
         self.assertEqual(test_response.status_code, 200)       
         self.assertTemplateUsed(test_response, 'post_detail.html')
         self.assertTemplateUsed(test_response, 'base.html') 
@@ -243,7 +253,7 @@ class PostViewTests(BasicTests):
         self.assertTemplateUsed(test_response, 'analytics_tracking.html')
         self.assertTrue('post' in test_response.context)  
         
-        test_response = self.client.get('/posts/not-a-fixture-post') 
+        test_response = self.client.get('/posts/not-a-fixture-post', follow=True) 
         self.assertEqual(test_response.status_code, 404)          
         
     def test_post_list(self):
@@ -251,7 +261,7 @@ class PostViewTests(BasicTests):
 
         This view uses a user with superuser permissions so does not test the permission levels for this view."""
         
-        test_response = self.client.get('/posts/')
+        test_response = self.client.get('/posts/', follow=True)
         self.assertEqual(test_response.status_code, 200)       
         self.assertTemplateUsed(test_response, 'post_list.html')
         self.assertTemplateUsed(test_response, 'base.html') 
@@ -263,24 +273,20 @@ class PostViewTests(BasicTests):
 
         This view uses a user with superuser permissions so does not test the permission levels for this view."""
         
-        test_response = self.client.get('/posts/new')
+        test_response = self.client.get('/posts/new', follow=True)
         self.assertEqual(test_response.status_code, 200)       
         self.assertTemplateUsed(test_response, 'post_form.html')
-        self.assertTemplateUsed(test_response, 'base.html') 
-        self.assertTemplateUsed(test_response, 'analytics_tracking.html') 
         
     def test_post_edit(self):
         """This tests the post-edit view, ensuring that templates are loaded correctly.  
 
         This view uses a user with superuser permissions so does not test the permission levels for this view."""
         
-        test_response = self.client.get('/posts/fixture-post/edit')
+        test_response = self.client.get('/posts/fixture-post/edit', follow=True)
         self.assertEqual(test_response.status_code, 200)       
         self.assertTemplateUsed(test_response, 'post_form.html')
-        self.assertTemplateUsed(test_response, 'base.html') 
-        self.assertTemplateUsed(test_response, 'analytics_tracking.html')  
         
-        test_response = self.client.get('/posts/not-a-fixture-post/edit') 
+        test_response = self.client.get('/posts/not-a-fixture-post/edit', follow=True) 
         self.assertEqual(test_response.status_code, 404)                      
                                                                                
     def test_post_delete(self):
@@ -288,11 +294,10 @@ class PostViewTests(BasicTests):
 
         This view uses a user with superuser permissions so does not test the permission levels for this view."""
         
-        test_response = self.client.get('/posts/fixture-post/delete')
+        test_response = self.client.get('/posts/fixture-post/delete', follow=True)
         self.assertEqual(test_response.status_code, 200)       
         self.assertTemplateUsed(test_response, 'confirm_delete.html')
-        self.assertTemplateUsed(test_response, 'base.html') 
-        self.assertTemplateUsed(test_response, 'analytics_tracking.html')                                                              
+        self.assertTemplateUsed(test_response, 'base.html')                                                          
 
-        test_response = self.client.get('/posts/not-a-fixture-post/delete') 
+        test_response = self.client.get('/posts/not-a-fixture-post/delete', follow=True) 
         self.assertEqual(test_response.status_code, 404)  

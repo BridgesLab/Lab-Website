@@ -1,0 +1,13 @@
+{
+  "name": "Bridges Lab Website SCSS",
+  "version": "1.0.0",
+  "description": "SCSS compiler for Django site using Bootstrap",
+  "scripts": {
+     "build-css": "sass --load-path=node_modules --load-path=lab_website/static/scss lab_website/static/scss/custom.scss lab_website/static/css/custom.css",
+    "watch-css": "sass --watch --load-path=node_modules --load-path=lab_website/static/scss lab_website/static/scss/custom.scss lab_website/static/css/custom.css"
+ },
+  "devDependencies": {
+    "sass": "^1.77.0",
+    "bootstrap": "^5.3.3"
+  }
+}

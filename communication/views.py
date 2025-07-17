@@ -3,10 +3,12 @@
 So far this includes API calls for Twitter feeds and Google Calendar'''
 
 import json
-import urllib, urllib2
+import urllib.request
+import urllib.error
+import urllib.parse
 import datetime, time
-import tweepy
-import dateutil
+import requests
+import markdown
 
 from django.conf import settings
 from django.shortcuts import render
@@ -16,35 +18,57 @@ from django.views.generic.edit import CreateView, UpdateView, DeleteView
 from django.views.generic import ListView
 from django.template import RequestContext
 from django.contrib import messages
-from django.core.urlresolvers import reverse_lazy
+from django.urls import reverse_lazy
 
-from braces.views import PermissionRequiredMixin
+from django.contrib.auth.mixins import PermissionRequiredMixin
 
 from communication.models import LabAddress, LabLocation, Post
 from papers.models import Commentary
 
-def generate_twitter_timeline(count):
-    '''This function generates a timeline from a twitter username.
+import requests
+from django.conf import settings
 
-    This function requires a valid TWITTER_NAME as defined in localsettings.py.
-    The function also requires an integer for the number of tweets as a second argument.
-    It places a REST call to the Twitter API v1 (see https://dev.twitter.com/docs/api/1/get/statuses/user_timeline)
-    It returns a dictionary containing information on the most recent tweets from that account (excluding replies).
-    If twitter returns a HTTPError, an error message is returned.
-    It is not currently in use and is only left here for reference purposes.
-    '''
+def generate_twitter_timeline(max_results=50):
+    """
+    Fetches up to `max_results` recent tweets for the user defined in settings.TWITTER_NAME.
+    Gracefully handles rate-limiting (429) and other common errors.
+    """
+    bearer_token = settings.TWITTER_BEARER_TOKEN
+    username = settings.TWITTER_NAME
 
-    auth = tweepy.OAuthHandler(settings.TWITTER_CONSUMER_KEY, settings.TWITTER_CONSUMER_SECRET)
-    auth.set_access_token(settings.TWITTER_ACCESS_TOKEN, settings.TWITTER_ACCESS_TOKEN_SECRET)
+    headers = {
+        "Authorization": f"Bearer {bearer_token}"
+    }
 
-    api = tweepy.API(auth)
-    values = {'count':count, 'include_rts':'true'}
-    params = urllib.urlencode(values)
-    timeline = api.user_timeline(count=count)
-    #for tweet in timeline:
-    #    str_time = time.strptime(tweet['created_at'], "%a %b %d %H:%M:%S +0000 %Y")
-    #    tweet['created_at_cleaned'] = datetime.datetime(*str_time[:6])
-    return timeline
+    try:
+        # Step 1: Get the user ID
+        user_url = f"https://api.twitter.com/2/users/by/username/{username}"
+        user_resp = requests.get(user_url, headers=headers)
+        if user_resp.status_code == 429:
+            return {"error": "Rate limit exceeded. Please try again later."}
+        user_resp.raise_for_status()
+
+        user_id = user_resp.json().get("data", {}).get("id")
+        if not user_id:
+            return {"error": "User ID not found."}
+
+        # Step 2: Get tweets
+        timeline_url = f"https://api.twitter.com/2/users/{user_id}/tweets"
+        params = {
+            "max_results": min(max_results, 100),
+            "tweet.fields": "created_at,text"
+        }
+
+        tweet_resp = requests.get(timeline_url, headers=headers, params=params)
+        if tweet_resp.status_code == 429:
+            return {"error": "Rate limit exceeded. Please try again later."}
+        tweet_resp.raise_for_status()
+
+        return tweet_resp.json().get("data", [])
+
+    except RequestException as e:
+        return {"error": f"Twitter API error: {str(e)}"}
+
     
 def facebook_status_request(type, max):
     '''This function takes a request url and token and returns deserialized data.
@@ -52,13 +76,13 @@ def facebook_status_request(type, max):
     It requires a type (general, milestones or posts) and a maximum number of entries to return
     '''
     values = {'access_token':settings.FACEBOOK_ACCESS_TOKEN}
-    params = urllib.urlencode(values)
+    params = urllib.parse.urlencode(values)
     request_url = 'https://graph.facebook.com/v2.3/'+ '447068338637332' + type + '&' + params + '&limit=' + str(max)  
-    request = urllib2.Request(request_url)
+    request = urllib.request.Request(request_url)
     
     try:
-        response = urllib2.urlopen(request)
-    except urllib2.URLError, e:
+        response = urllib.request.urlopen(request)
+    except urllib.error.URLError as e:
         if e.code == 404:
             data = "Facebook API is not Available."
         else:
@@ -87,9 +111,9 @@ def get_wikipedia_edits(username, count):
     'ucnamespace':'0',
     'ucprop':'title|timestamp',
     'ucshow':'!minor'}
-    params = urllib.urlencode(values)
+    params = urllib.parse.urlencode(values)
     target_site = 'http://en.wikipedia.org/w/api.php?' + params
-    response = urllib2.urlopen(target_site)
+    response = urllib.request.urlopen(target_site)
     json_response = response.read() #this reads the HTTP response
     pages = json.loads(json_response) 
     for edit in pages['query']['usercontribs']:
@@ -100,18 +124,25 @@ def get_wikipedia_edits(username, count):
 class TwitterView(TemplateView):
     '''This view class generates a page showing the twitter timeline for the lab twitter feed.
     
-    This view uses the function :function:`~communication.utilities.twitter_oauth_req`.
-    The default settings are to return 20 tweets including retweets but excluding replies.
+    This view uses the function :function:`~communication.generate_twitter_timeline`.
+    The default settings are to return 50 tweets including retweets but excluding replies.
     '''
 
     template_name = "twitter_timeline.html"
     
     def get_context_data(self, **kwargs):
-        '''This function adds the google_calendar_id to the context.'''
         context = super(TwitterView, self).get_context_data(**kwargs)
-        context['timeline'] = generate_twitter_timeline(50)
+        result = generate_twitter_timeline(50)
+
+        if isinstance(result, dict) and "error" in result:
+            context['twitter_error'] = result['error']
+            context['timeline'] = []
+        else:
+            context['timeline'] = result
+            context['twitter_error'] = None
+
         context['screen_name'] = settings.TWITTER_NAME
-        return context 
+        return context
              
 class GoogleCalendarView(TemplateView):
     '''This view renders a google calendar page.
@@ -140,7 +171,7 @@ class WikipedaEditsView(View):
             pages = get_wikipedia_edits(settings.WIKIPEDIA_USERNAME,50)
             return render(request, 'wikipedia_edits.html',
             {'pages':pages,'username':settings.WIKIPEDIA_USERNAME})
-        except urllib2.HTTPError:
+        except urllib.error.HTTPError:
             messages.error(request, 'No Response from Wikipedia.  Are you sure that %s is a valid username?' % settings.WIKIPEDIA_USERNAME)	    
             return render('wikipedia_edits.html',
             {'username':settings.WIKIPEDIA_USERNAME})
@@ -161,10 +192,10 @@ class LabRulesView(TemplateView):
         It will check if the markdown file is available, download it and pass  it to the template.
         If there is no markdown file, then it will generate a no file presented note.'''
         context = super(LabRulesView, self).get_context_data(**kwargs)
-        request = urllib2.Request(settings.LAB_RULES_FILE)
+        request = urllib.request.Request(settings.LAB_RULES_FILE)
         try:
-            response = urllib2.urlopen(request)
-        except urllib2.URLError, e:
+            response = urllib.request.urlopen(request)
+        except urllib.error.URLError as e:
             if e.code == 404:
                 lab_rules = "Lab Rules File is not Available."
             else:
@@ -195,10 +226,10 @@ class PublicationPolicyView(TemplateView):
         It will check if the markdown file is available, download it and pass  it to the template.
         If there is no markdown file, then it will generate a no file presented note.'''
         context = super(PublicationPolicyView, self).get_context_data(**kwargs)
-        request = urllib2.Request(settings.PUBLICATION_POLICY_FILE)
+        request = urllib.request.Request(settings.PUBLICATION_POLICY_FILE)
         try:
-            response = urllib2.urlopen(request)
-        except urllib2.URLError, e:
+            response = urllib.request.urlopen(request)
+        except urllib.error.URLError as e:
             if e.code == 404:
                 publication_policy = "Publication Policy File is not Available."
             else:
@@ -229,10 +260,10 @@ class DataResourceSharingPolicyView(TemplateView):
         It will check if the markdown file is available, download it and pass  it to the template.
         If there is no markdown file, then it will generate a no file presented note.'''
         context = super(DataResourceSharingPolicyView, self).get_context_data(**kwargs)
-        request = urllib2.Request(settings.DATA_SHARING_FILE)
+        request = urllib.request.Request(settings.DATA_SHARING_FILE)
         try:
-            response = urllib2.urlopen(request)
-        except urllib2.URLError, e:
+            response = urllib.request.urlopen(request)
+        except urllib.error.URLError as e:
             if e.code == 404:
                 data_sharing_policy = "Publication Policy File is not Available."
             else:
@@ -288,15 +319,15 @@ class ContactView(ListView):
         # Call the base implementation first to get a context
         context = super(ContactView, self).get_context_data(**kwargs)
         context['twitter'] = settings.TWITTER_NAME
-    	context['google_plus'] = settings.GOOGLE_PLUS_ID
-    	context['facebook'] = settings.FACEBOOK_NAME
-    	context['lab_name'] = settings.LAB_NAME
-    	context['disqus_forum'] = settings.DISQUS_SHORTNAME
-    	context['fb_app_id'] = settings.FACEBOOK_APP_ID
-    	context['fb_admins'] = settings.FACEBOOK_ID
-    	context['analytics_tracking'] = settings.ANALYTICS_TRACKING
-    	context['analytics_root'] = settings.ANALYTICS_ROOT
-	return context 
+        context['google_plus'] = settings.GOOGLE_PLUS_ID
+        context['facebook'] = settings.FACEBOOK_NAME
+        context['lab_name'] = settings.LAB_NAME
+        context['disqus_forum'] = settings.DISQUS_SHORTNAME
+        context['fb_app_id'] = settings.FACEBOOK_APP_ID
+        context['fb_admins'] = settings.FACEBOOK_ID
+        context['analytics_tracking'] = settings.ANALYTICS_TRACKING
+        context['analytics_root'] = settings.ANALYTICS_ROOT
+        return context 
 
 class LabLocationView(ListView):
     '''This view provides location information.
@@ -329,23 +360,20 @@ class PostDetail(DetailView):
     template_name = "post_detail.html"
     
     def get_context_data(self, **kwargs):
-        context = super(PostDetail, self).get_context_data(**kwargs)
+        context = super().get_context_data(**kwargs)
         request_url = str(context['post'].markdown_url)
         
-        request = urllib2.Request(request_url)
+        request = urllib.request.Request(request_url)
         try:
-            response = urllib2.urlopen(request)
-        except urllib2.URLError, e:
-            if e.code == 404:
-                post_data = "Post is not Available."
-            else:
-                #this is for a non-404 URLError.
-                post_data = "Post is not Available."
+            response = urllib.request.urlopen(request)
+        except urllib.error.URLError as e:
+            post_data = "Post is not Available."
         except ValueError:
             post_data = "Post is not Available."        
         else:
-             #successful connection
-             post_data = response.read()         
+            post_data_raw = response.read().decode('utf-8')
+            post_data = markdown.markdown(post_data_raw)
+        
         context['post_data'] = post_data
         return context
                 

@@ -27,10 +27,6 @@ SITE_ID = 1
 # to load the internationalization machinery.
 USE_I18N = True
 
-# If you set this to False, Django will not format dates, numbers and
-# calendars according to the current locale.
-USE_L10N = True
-
 # If you set this to False, Django will not use timezone-aware datetimes.
 USE_TZ = True
 
@@ -70,11 +66,8 @@ DATABASES = {
 LAB_NAME = '' #the lab name, ie Bridges Laboratory
 DISQUS_SHORTNAME = '' #forum name as registered on disqus
 #Twitter settings
-TWITTER_NAME = '' #the laboratory's twitter name if used, enter inside single quotes
-TWITTER_CONSUMER_KEY = ''  #Register your application at https://dev.twitter.com/apps to get a key and secret
-TWITTER_CONSUMER_SECRET = ''  #Register your application at https://dev.twitter.com/apps to get a key and secret
-TWITTER_ACCESS_TOKEN = '' #This is available at https://dev.twitter.com/apps and should be for your own account
-TWITTER_ACCESS_TOKEN_SECRET = '' #This is available at https://dev.twitter.com/apps and should be for your own account
+TWITTER_NAME = '' #the laboratory's twitter name if used, enter inside single quotes without the @ sign
+TWITTER_BEARER_TOKEN = '' #the bearer token for the laboratory's twitter account, if used
 #google settings
 GOOGLE_PLUS_ID = ''#the laboratory's google plus page id.
 GOOGLE_CALENDAR_ID = '' #the calendar id.  You can find this under Calendar Details
@@ -90,3 +83,19 @@ ANALYTICS_ROOT = '' #the root of your analytics tracking url
 #other settings
 PUBLICATION_POLICY_FILE = '' #URL for optional lab publication policy in restructured text format
 LAB_RULES_FILE = '' #URL for an optional laboratory rules file in restructured text format.
+
+# CORS settings (adjust as needed for your frontend)
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",  # React development server
+    "http://127.0.0.1:3000",
+    # Add your production domains
+]
+
+# Spectacular settings (for OpenAPI/Swagger docs)
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Papers API',
+    'DESCRIPTION': 'API for managing and retrieving academic publications',
+    'VERSION': '2.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'COMPONENT_SPLIT_REQUEST': True,
+}

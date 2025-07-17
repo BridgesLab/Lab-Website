@@ -18,12 +18,13 @@ STATICFILES_FINDERS = (
 # Make this unique, and don't share it with anybody.
 SECRET_KEY = 'vif6db9fb9s8vb&amp;+j*h520)c+38ahyx5#8=)uo_c&amp;0jk#ei^wr'
 
-MIDDLEWARE_CLASSES = (
+MIDDLEWARE = (
     'django.middleware.common.CommonMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     #'debug_toolbar.middleware.DebugToolbarMiddleware'
     # Uncomment the next line for simple clickjacking protection:
     # 'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -52,8 +53,29 @@ INSTALLED_APPS = (
     'papers',
     'projects',
     #'debug_toolbar',
-    'tastypie'
+    'rest_framework',
+    'rest_framework_xml',
+    'drf_spectacular',
+    'django_filters',
 )
+
+REST_FRAMEWORK = {
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.AllowAny',  # Matches original API (no auth)
+    ],
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+        'rest_framework_xml.renderers.XMLRenderer',
+    ],
+    'DEFAULT_FILTER_BACKENDS': [
+        'django_filters.rest_framework.DjangoFilterBackend',
+        'rest_framework.filters.SearchFilter',
+        'rest_framework.filters.OrderingFilter',
+    ],
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 20,  # Matches original API default
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
 
 TEMPLATES = [
     {
@@ -66,9 +88,11 @@ TEMPLATES = [
 				"django.contrib.auth.context_processors.auth",
 				"django.template.context_processors.debug",
 				"django.template.context_processors.i18n",
+                "django.template.context_processors.request",
 				"django.template.context_processors.media",
 				"django.template.context_processors.static",
 				"django.template.context_processors.tz",
+                'django.contrib.messages.context_processors.messages'
                 ],
             },
     },
@@ -96,6 +120,16 @@ LOGGING = {
     },
 }
 
+# Django 3.2+ requires explicit primary key type for new models.
+# This sets the default to BigAutoField to avoid warnings and future-proof migrations.
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-from localsettings import *
+# updated to the new form renderer
+FORM_RENDERER = 'django.forms.renderers.DjangoTemplates'
+
+# Starting with Django 6.0, forms.URLField will assume 'https://' as the default scheme
+# for URLs without one. This setting enables the new behavior now, silencing the deprecation warning.
+FORMS_URLFIELD_ASSUME_HTTPS = True
+
+from .localsettings import *
 
