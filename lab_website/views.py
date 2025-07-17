@@ -6,10 +6,13 @@ import json
 import urllib.request
 import urllib.error
 import time
-import datetime
+import re
+from datetime import datetime
 
 from django.conf import settings
-from django.views.generic.base import View, TemplateView
+from django.views.generic.base import TemplateView
+from django.utils.html import format_html
+from django.utils.safestring import mark_safe
 
 from personnel.models import JobPosting
 from papers.models import Publication, Commentary, JournalClubArticle
@@ -19,6 +22,7 @@ class IndexView(TemplateView):
     '''This view redirects to the home page.'''
     
     template_name = "index.html"   
+    
     def get_context_data(self, **kwargs):
         '''This function provides the context which is passed to this view.
         
@@ -33,23 +37,91 @@ class IndexView(TemplateView):
             '''This function takes a request url and token and returns deserialized data.'''
             request = urllib.request.Request(request_url)
             try:
-                    response = response = urllib.request.urlopen(request)
+                response = urllib.request.urlopen(request)
             except urllib.error.URLError as e:
-                    if e.code == 404:
-                        data = "Facebook API is not Available."
-                    else:
-                        #this is for a non-404 URLError.
-                        data = "Facebook API is not Available."
+                if e.code == 404:
+                    data = "Facebook API is not Available."
+                else:
+                    #this is for a non-404 URLError.
+                    data = "Facebook API is not Available."
             except ValueError:
-                    lab_rules = "Facebook API is not Available."        
+                data = "Facebook API is not Available."        
             else:
-                     #successful connection
-                     json_data = response.read()
-                     data = json.loads(json_data)
-                     return data
-         
-        general_request_url = 'https://graph.facebook.com/v13.0/' + settings.FACEBOOK_ID + '?fields=id,description,about,name,photos{webp_images},picture.height(961)&access_token='+ settings.FACEBOOK_ACCESS_TOKEN
-        photo_request_url = 'https://graph.facebook.com/v20.0/' + settings.FACEBOOK_ID + '/posts?fields=id,status_type,message,full_picture&access_token='+ settings.FACEBOOK_ACCESS_TOKEN
+                #successful connection
+                json_data = response.read()
+                data = json.loads(json_data)
+                return data
+        
+        def urlify_text(text):
+            '''Convert URLs in text to clickable links.'''
+            if not text:
+                return text
+                
+            # URL regex pattern
+            url_pattern = re.compile(
+                r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
+            )
+            
+            def replace_url(match):
+                url = match.group(0)
+                return format_html('<a href="{}" target="_blank" rel="noopener noreferrer">{}</a>', url, url)
+            
+            return mark_safe(url_pattern.sub(replace_url, text))
+        
+        def process_facebook_posts(posts_data):
+            '''Process Facebook posts to extract text, date, and urlify links.'''
+            processed_posts = []
+            
+            if isinstance(posts_data, str):  # Error case
+                return processed_posts
+                
+            if 'data' in posts_data:
+                for post in posts_data['data']:
+                    processed_post = {
+                        'id': post.get('id', ''),
+                        'message': urlify_text(post.get('message', '')),
+                        'created_time': format_facebook_date(post.get('created_time', '')),
+                        'created_time_raw': post.get('created_time', ''),
+                        'full_picture': post.get('full_picture', ''),
+                        'status_type': post.get('status_type', ''),
+                        'permalink_url': post.get('permalink_url', ''),
+                    }
+                    processed_posts.append(processed_post)
+            
+            return processed_posts
+        
+        def format_facebook_date(date_string):
+            '''Format Facebook date string to a more readable format.'''
+            if not date_string:
+                return ''
+                
+            try:
+                # Facebook returns dates in ISO format like "2024-01-15T10:30:00+0000"
+                dt = datetime.fromisoformat(date_string.replace('Z', '+00:00'))
+                return dt.strftime('%B %d, %Y at %I:%M %p')
+            except (ValueError, AttributeError):
+                return date_string
+        
+        # Updated URLs to get more post data including created_time and permalink
+        general_request_url = 'https://graph.facebook.com/v23.0/' + settings.FACEBOOK_ID + '?fields=id,description,about,name,photos{webp_images},picture.height(961)&access_token='+ settings.FACEBOOK_ACCESS_TOKEN
+        
+        # Updated posts URL to include created_time and permalink_url
+        posts_request_url = 'https://graph.facebook.com/v23.0/' + settings.FACEBOOK_ID + '/posts?fields=id,status_type,message,full_picture,created_time,permalink_url&limit=20&access_token='+ settings.FACEBOOK_ACCESS_TOKEN
+        
+        # Keep your existing photo URL for backward compatibility
+        photo_request_url = 'https://graph.facebook.com/v23.0/' + settings.FACEBOOK_ID + '/posts?fields=id,status_type,message,full_picture&access_token='+ settings.FACEBOOK_ACCESS_TOKEN
+        
+        # Your existing context data
+        context['recent_papers'] = Publication.objects.filter(laboratory_paper=True)[0:5]  
+        context['recent_posts'] = Post.objects.all()[0:10]  
+        context['recent_comments'] = Commentary.objects.all()[0:5] 
+        context['journal_article_list'] = JournalClubArticle.objects.all()[0:5]                
+        context['general_data'] = facebook_request(general_request_url)
+        context['photo_data'] = facebook_request(photo_request_url)
+        
+        # New: Add processed Facebook posts as 'news'
+        posts_data = facebook_request(posts_request_url)
+        context['news'] = process_facebook_posts(posts_data)
         context['recent_papers'] =  Publication.objects.filter(laboratory_paper=True)[0:5]  
         context['recent_posts'] =  Post.objects.all()[0:10]  
         context['recent_comments'] =  Commentary.objects.all()[0:5] 
@@ -68,7 +140,7 @@ class IndexView(TemplateView):
         context['analytics_root'] = settings.ANALYTICS_ROOT
         context['address'] = LabAddress.objects.filter(type="Primary")[0]
 
-        return context                            
+        return context                         
 
 class PhotoView(TemplateView):
     '''This view shows images pulled from the facebook API, moved off the main page'''

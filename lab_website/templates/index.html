@@ -37,7 +37,7 @@
   {% for paper in recent_papers %}
   {% include "paper-detail-snippet.html" %}
   {% endfor %}
-<p class="card-text mt-4 fw-bold">Click <a href="{% url 'laboratory-papers' %}">here</a> for a full list of papers.</p>
+<p class="card-text mt-4 fw-bold">Click <a href="{% url 'laboratory-papers' %}">here</a> for a list of papers.</p>
 </div>
 </div>
 </section>
@@ -52,12 +52,17 @@
       <div class="card-header">
         <h2 class='text-center card-title display-6'><a href="{% url 'post-list' %}" class="text-decoration-none text-dark">Blog Posts</a></h2>
       </div>
-      <div class="card-body text-center">
+      <div class="card-body">
         <ul class="list-unstyled">
         {% for post in recent_posts %}
         <li><a href="{{ post.get_absolute_url }}">{{ post }}</a></li>
         {% endfor %}
         </ul>
+              <p class="card-text mt-4 fw-bold">
+        Click <a href="{% url 'post-list' %}" 
+                 target="_blank" 
+                 rel="noopener noreferrer">here</a> for a list of posts.
+      </p>
       </div>
     </div>
   </section>
@@ -70,10 +75,61 @@
       </div>
       <div class="card-body">
         {% include "journal-club-paper-snippet.html" %}
-        <p class="card-text mt-4 fw-bold">Click <a href="{% url 'jc-list' %}">here</a> for a full list of journal club articles.</p>
+        <p class="card-text mt-4 fw-bold">Click <a href="{% url 'jc-list' %}">here</a> for a list of journal club articles.</p>
       </div>
     </div>
   </section>
+
+<section id='news' class='container-xl'>
+  <div class="card">
+    <div class="card-header">
+      <h2 class='text-center card-title display-6'>News</h2>
+    </div>
+    <div class="card-body">
+      {% if news %}
+        {% for news_item in news|slice:"5" %}
+          <div class="news-item mb-4 pb-3 border-bottom">
+            
+            <!-- Post content -->
+            {% if news_item.message %}
+              <div class="news-content mb-3">
+                {{ news_item.message|safe }}
+              </div>
+            {% endif %}
+
+            <!-- Date -->
+            {% if news_item.created_time %}
+              <p class="text-muted small mb-2">
+                <i class="fas fa-clock"></i> {{ news_item.created_time }}
+              </p>
+            {% endif %}
+            
+            <!-- Post actions -->
+            <div class="news-actions">
+              {% if news_item.permalink_url %}
+                <a href="{{ news_item.permalink_url }}" 
+                   target="_blank" 
+                   rel="noopener noreferrer"
+                   class="btn btn-outline-primary btn-sm">
+                  <i class="fab fa-facebook"></i> View on Facebook
+                </a>
+              {% endif %}
+              
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <p class="text-muted text-center">No recent news available.</p>
+      {% endif %}
+      
+      <p class="card-text mt-4 fw-bold">
+        Click <a href="https://www.facebook.com/{{settings.FACEBOOK_NAME}}" 
+                 target="_blank" 
+                 rel="noopener noreferrer">here</a> for our Facebook page.
+      </p>
+    </div>
+  </div>
+</section>
 
 </div>
 </div>
