@@ -69,14 +69,21 @@ class IndexView(TemplateView):
             return mark_safe(url_pattern.sub(replace_url, text))
         
         def process_facebook_posts(posts_data):
-            '''Process Facebook posts to extract text, date, and urlify links.'''
+            '''Process Facebook posts to extract text, date, and urlify links, limiting to 5 most recent.'''
             processed_posts = []
             
             if isinstance(posts_data, str):  # Error case
                 return processed_posts
                 
             if 'data' in posts_data:
-                for post in posts_data['data']:
+                # Sort posts by created_time (newest first) and take top 5
+                sorted_posts = sorted(
+                    posts_data['data'],
+                    key=lambda x: x.get('created_time', ''),
+                    reverse=True
+                )[:5]
+                
+                for post in sorted_posts:
                     processed_post = {
                         'id': post.get('id', ''),
                         'message': urlify_text(post.get('message', '')),
@@ -85,7 +92,14 @@ class IndexView(TemplateView):
                         'full_picture': post.get('full_picture', ''),
                         'status_type': post.get('status_type', ''),
                         'permalink_url': post.get('permalink_url', ''),
+                        'shared_link': ''
                     }
+                    # Check for shared links in attachments
+                    if 'attachments' in post and 'data' in post['attachments']:
+                        for attachment in post['attachments']['data']:
+                            if 'url' in attachment and attachment.get('type') == 'share':
+                                processed_post['shared_link'] = attachment['url']
+                    
                     processed_posts.append(processed_post)
             
             return processed_posts
@@ -95,37 +109,28 @@ class IndexView(TemplateView):
             if not date_string:
                 return None
             try:
-        # Facebook returns dates in ISO format like "2024-01-15T10:30:00+0000"
+                # Facebook returns dates in ISO format like "2024-01-15T10:30:00+0000"
                 return datetime.fromisoformat(date_string.replace('Z', '+00:00'))
             except (ValueError, AttributeError):
                 return date_string
         
-        # Updated URLs to get more post data including created_time and permalink
+        # Updated URLs to get more post data including created_time, attachments, and permalink
         general_request_url = 'https://graph.facebook.com/v23.0/' + settings.FACEBOOK_ID + '?fields=id,description,about,name,photos{webp_images},picture.height(961)&access_token='+ settings.FACEBOOK_ACCESS_TOKEN
         
-        # Updated posts URL to include created_time and permalink_url
-        posts_request_url = 'https://graph.facebook.com/v23.0/' + settings.FACEBOOK_ID + '/posts?fields=id,status_type,message,full_picture,created_time,permalink_url&limit=20&access_token='+ settings.FACEBOOK_ACCESS_TOKEN
+        # Updated posts URL to include attachments for shared links
+        posts_request_url = 'https://graph.facebook.com/v23.0/' + settings.FACEBOOK_ID + '/posts?fields=id,status_type,message,full_picture,created_time,permalink_url,attachments{url,type}&limit=20&access_token='+ settings.FACEBOOK_ACCESS_TOKEN
         
-        # Keep your existing photo URL for backward compatibility
+        # Keep existing photo URL for backward compatibility
         photo_request_url = 'https://graph.facebook.com/v23.0/' + settings.FACEBOOK_ID + '/posts?fields=id,status_type,message,full_picture&access_token='+ settings.FACEBOOK_ACCESS_TOKEN
         
-        # Your existing context data
-        context['recent_papers'] = Publication.objects.filter(laboratory_paper=True)[0:5]  
-        context['recent_posts'] = Post.objects.all()[0:10]  
-        context['recent_comments'] = Commentary.objects.all()[0:5] 
-        context['journal_article_list'] = JournalClubArticle.objects.all()[0:5]                
+        # Context data
+        context['recent_papers'] = Publication.objects.filter(laboratory_paper=True)[:5]
+        context['recent_posts'] = Post.objects.all()[:10]
+        context['recent_comments'] = Commentary.objects.all()[:5]
+        context['journal_article_list'] = JournalClubArticle.objects.all()[:5]
         context['general_data'] = facebook_request(general_request_url)
         context['photo_data'] = facebook_request(photo_request_url)
-        
-        # New: Add processed Facebook posts as 'news'
-        posts_data = facebook_request(posts_request_url)
-        context['news'] = process_facebook_posts(posts_data)
-        context['recent_papers'] =  Publication.objects.filter(laboratory_paper=True)[0:5]  
-        context['recent_posts'] =  Post.objects.all()[0:10]  
-        context['recent_comments'] =  Commentary.objects.all()[0:5] 
-        context['journal_article_list'] = JournalClubArticle.objects.all()[0:5]                
-        context['general_data'] = facebook_request(general_request_url)
-        context['photo_data'] = facebook_request(photo_request_url)
+        context['news'] = process_facebook_posts(facebook_request(posts_request_url))
         context['postings'] = JobPosting.objects.filter(active=True)
         context['twitter'] = settings.TWITTER_NAME
         context['google_plus'] = settings.GOOGLE_PLUS_ID
@@ -138,7 +143,7 @@ class IndexView(TemplateView):
         context['analytics_root'] = settings.ANALYTICS_ROOT
         context['address'] = LabAddress.objects.filter(type="Primary")[0]
 
-        return context                         
+        return context                 
 
 class PhotoView(TemplateView):
     '''This view shows images pulled from the facebook API, moved off the main page'''
