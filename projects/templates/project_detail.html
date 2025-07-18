@@ -48,11 +48,9 @@
             <h2 class='text-center display-6 mb-4'>What have we published on this topic?</h2>
             <div class="row">
                 <div class="col-12">
-                    <ol class="list-group list-group-numbered">
+                    <ol>
                         {% for paper in project.publications.all %}
-                        <li class="list-group-item">
                             {% include "paper-detail-snippet.html" %}
-                        </li>
                         {% endfor %}
                     </ol>
                 </div>
