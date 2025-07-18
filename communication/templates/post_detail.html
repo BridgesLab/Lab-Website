@@ -56,17 +56,17 @@
 
       {% if post.project %}
       <div id="project" class="mb-3">
-        <p>This post is about the project
-          <a href="{{ post.project.get_absolute_url }}" itemprop="about">{{ post.project }}</a>.
-        </p>
+          <a href="{{ post.project.get_absolute_url }}" class="btn btn-primary" itemprop="about">{{ post.project }}</a>.
       </div>
       {% endif %}
 
       {% if post.paper %}
       <div id="paper-info" class="mb-3">
+        <ol class="list-unstyled">
         {% with post.paper as paper %}
           {% include 'paper-detail-snippet.html' %}
         {% endwith %}
+      </ol>
       </div>
       {% endif %}
     </aside>
