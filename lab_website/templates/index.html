@@ -5,10 +5,6 @@
 <meta name="description" content="{{ general_data.about }}">
 {% endblock title %}
 
-{% block scripts %}
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.1/font/bootstrap-icons.css">
-{% endblock scripts %}
-
 {% block content %}
 <article itemscope itemtype="http://schema.org/Organization">
 
@@ -39,9 +35,11 @@
       <h2 class='text-center card-title display-6'><a href="{% url 'laboratory-papers' %}" class="text-decoration-none text-dark">Recent Publications</a></h2>
     </div>
     <div class="card-body">
+      <ol class="list-unstyled">
       {% for paper in recent_papers %}
-      {% include "paper-detail-snippet.html" %}
+        {% include "paper-detail-snippet.html" %}
       {% endfor %}
+      </ol>
       <p class="card-text mt-4 fw-bold">Click <a href="{% url 'laboratory-papers' %}">here</a> for a list of papers.</p>
     </div>
   </div>

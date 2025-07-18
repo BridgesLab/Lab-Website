@@ -25,7 +25,9 @@
 {% for commentary in commentaries %}
 <section>
 {% with commentary.paper as paper %}
-{% include "paper-detail-snippet.html" %}
+<ol class="list-unstyled">
+    {% include "paper-detail-snippet.html" %}
+</ol>
 {% endwith %}
 </section>
 {% endfor %}

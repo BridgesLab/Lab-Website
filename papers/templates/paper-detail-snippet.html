@@ -1,6 +1,5 @@
 <div class="row">
-<div class ="col">
-<li class="border-bottom">{% if paper.authors.count == 1%}
+<li class="border-bottom pb-3 pt-2">{% if paper.authors.count == 1%}
 {% for author in paper.authors.all|dictsort:"order" %}
 {% if author.author.current_lab_member or author.author.alumni %}<a href='{{ author.author.get_absolute_url }}' class="plain-link">{{ author.name }}</a>{% else %}{{ author.name }}{% endif %}
 {% endfor %}
@@ -9,10 +8,23 @@
 {% if forloop.revcounter == 1 %} and {% endif %} {% if author.author.current_lab_member or author.author.alumni %}<a href='{{ author.author.get_absolute_url }}' class="text-decoration-none text-dark">{{ author.name }}</a>{% else %}{{ author.name }}{% endif %}{% if forloop.revcounter > 2 %}, {% endif %}{% if forloop.last %}.{% endif %} 
 {% endfor %}
 {% endif %}
-<a href='{{ paper.get_absolute_url }}' class="text-decoration-none text-dark">{{ paper }}</a>  {% if paper.year %}{{ paper.year }}. {% endif %}<strong>{{ paper.journal }}</strong>  {% if paper.volume %}{{ paper.volume }}{% if paper.issue %}({{ paper.issue }}){% endif %}:{{ paper.pages }} {% endif %} <a href="{{ paper.doi_link }}"class="text-decoration-none text-dark">Full Text</a> {% if paper.commentary_set.all.exists %}{% for commentary in paper.commentary_set.all %}<a href="{{ commentary.get_absolute_url }}"> Our Thoughts</a> {% endfor %}{% endif %} <a href='{{ paper.get_absolute_url }}'> Details</a>. {% if paper.preprint %}<mark>Preprint</mark>{% endif %}
-</div>
-<div class="col-2">
-{% include "altmetric_paper_snippet.html"%}
-</div>
+<a href='{{ paper.get_absolute_url }}' class="text-decoration-none text-dark">{{ paper }}</a>  {% if paper.year %}{{ paper.year }}. {% endif %}<strong>{{ paper.journal }}</strong>  {% if paper.volume %}{{ paper.volume }}{% if paper.issue %}({{ paper.issue }}){% endif %}:{{ paper.pages }} {% endif %} 
+     {% if paper.commentary_set.all.exists %}
+        {% for commentary in paper.commentary_set.all %}
+            <a href="{{ commentary.get_absolute_url }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-chat-left-text me-1"></i>Our Take</a> 
+        {% endfor %}
+    {% endif %}
+         {% if paper.post_set.all.exists %}
+        {% for post in paper.post_set.all %}
+            <a href="{{ post.get_absolute_url }}" class="btn btn-outline-primary btn-sm"><i class="bi bi-chat-left-text me-1"></i>Our Thoughts</a> 
+        {% endfor %}
+    {% endif %}
+         <a href='{{ paper.get_absolute_url }}' class="btn btn-primary btn-sm"> <i class="bi bi-info-circle me-1"></i>Details</a>
+    {% if paper.doi_link %}
+        <a href='{{ paper.doi_link }}' class="btn btn-secondary btn-sm"><i class="bi bi-link-45deg me-1"></i>Publisher Link</a>
+    {% endif %}
+    {% if paper.preprint %}
+        <span class="badge bg-danger">Preprint</span>
+    {% endif %}
 </li>
 </div>
