@@ -11,17 +11,17 @@
 <a href='{{ paper.get_absolute_url }}' class="text-decoration-none text-dark">{{ paper }}</a>  {% if paper.year %}{{ paper.year }}. {% endif %}<strong>{{ paper.journal }}</strong>  {% if paper.volume %}{{ paper.volume }}{% if paper.issue %}({{ paper.issue }}){% endif %}:{{ paper.pages }} {% endif %} 
      {% if paper.commentary_set.all.exists %}
         {% for commentary in paper.commentary_set.all %}
-            <a href="{{ commentary.get_absolute_url }}" class="btn btn-outline-secondary btn-sm"> Our Take</a> 
+            <a href="{{ commentary.get_absolute_url }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-chat-left-text me-1"></i>Our Take</a> 
         {% endfor %}
     {% endif %}
          {% if paper.post_set.all.exists %}
         {% for post in paper.post_set.all %}
-            <a href="{{ post.get_absolute_url }}" class="btn btn-outline-primary btn-sm"> Our Thoughts</a> 
+            <a href="{{ post.get_absolute_url }}" class="btn btn-outline-primary btn-sm"><i class="bi bi-chat-left-text me-1"></i>Our Thoughts</a> 
         {% endfor %}
     {% endif %}
-         <a href='{{ paper.get_absolute_url }}' class="btn btn-primary btn-sm"> Details</a>
+         <a href='{{ paper.get_absolute_url }}' class="btn btn-primary btn-sm"> <i class="bi bi-info-circle me-1"></i>Details</a>
     {% if paper.doi_link %}
-        <a href='{{ paper.doi_link }}' class="btn btn-secondary btn-sm">Publisher Link</a>
+        <a href='{{ paper.doi_link }}' class="btn btn-secondary btn-sm"><i class="bi bi-link-45deg me-1"></i>Publisher Link</a>
     {% endif %}
     {% if paper.preprint %}
         <span class="badge bg-danger">Preprint</span>
