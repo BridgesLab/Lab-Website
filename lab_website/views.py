@@ -188,7 +188,16 @@ class PhotoView(TemplateView):
         )
 
         context['general_data'] = facebook_request(general_request_url)
-        context['photo_data'] = facebook_request(photo_request_url)
+        # Get the data from Facebook
+        photo_data = facebook_request(photo_request_url)
+
+        # Filter to only include posts with full_picture
+        if photo_data and 'data' in photo_data:
+            filtered_data = [post for post in photo_data['data'] if post.get('full_picture')]
+            context['photo_data'] = {'data': filtered_data}
+        else:
+            context['photo_data'] = {'data': []}
+        # add lab name to context                   
         context['lab_name'] = settings.LAB_NAME
 
         return context
