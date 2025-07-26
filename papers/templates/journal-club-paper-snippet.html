@@ -1,9 +1,16 @@
 {% regroup journal_article_list by presentation_date|date:"Y" as journal_article_list_year %}
 {% for article in journal_article_list_year %}
 <section id='{{ article.grouper }}'>
-<h4>{{ article.grouper }} Journal Club Articles</h4>
+<h4 class="display-8">{{ article.grouper }} Journal Club Articles</h4>
 {% for article in article.list %}
-<li class="border-bottom">{{ article.citation }} <a href="{{ article.doi_link }}">{{ article.doi }}.  </a>{% if article.presentation_date %} Discussed on {{ article.presentation_date}}{% endif %}</li>
+<li class="border-bottom pb-3 pt-2 list-unstyled">{{ article.citation }}
+    <a href='{{ article.doi_link }}' class="btn btn-primary btn-sm"><i class="bi bi-link-45deg me-1"></i>Publisher Link</a>
+    {% if article.presentation_date %}
+    <p class="text-muted small mb-2">
+        <i class="fas fa-clock"></i> {{ article.presentation_date}}
+    </p>
+    {% endif %}
+</li>
 {% endfor %}
 </section>
 {% endfor %}
