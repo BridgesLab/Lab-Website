@@ -3,116 +3,136 @@
 {% block title %}<title>{{ person }}</title>{% endblock %}
 
 {% block header %}
-<h1 class="text-center">{{ person }}</h1>
+<h1 class="text-center my-4">{{ person }}</h1>
 {% endblock %}
 
 {% block content %}
-<article itemscope itemtype='http://schema.org/Person' class="container">
-<meta itemprop='familyName' content='{{ person.last_name }}' />
-<meta itemprop='givenName' content='{{ person.first_name }}' />
-<meta itemprop='name' content='{{ person }}' />
-<section id='bio' class='row'>
-<div class='col-7' id='details'>
-<dl>
-    {% if person.lab_roles.all %}
-  <dt>Position</dt>
-  {% for role in person.lab_roles.all %}
-    {% if not role.end_date %}
-      <dd>
-        {{ role|safe }}. ({{ role.start_date|timesince }}).
-      </dd>
+<article itemscope itemtype="http://schema.org/Person" class="container">
+
+  <meta itemprop="familyName" content="{{ person.last_name }}" />
+  <meta itemprop="givenName" content="{{ person.first_name }}" />
+  <meta itemprop="name" content="{{ person }}" />
+
+  <!-- Top row: Details + Image -->
+  <section id="bio" class="row">
+    <div class="col-md-8 mb-3">
+      <div class="card h-100">
+        <div class="card-body">
+          <dl class="row">
+            {% if person.lab_roles.all %}
+              <dt class="col-sm-4">Position</dt>
+              <dd class="col-sm-8">
+                {% for role in person.lab_roles.all %}
+                  {% if not role.end_date %}
+                    {{ role|safe }} ({{ role.start_date|timesince }})<br />
+                  {% endif %}
+                {% endfor %}
+
+                <button class="btn btn-sm btn-outline-secondary mt-2" type="button" 
+                        data-bs-toggle="collapse" data-bs-target="#previous-positions-{{ person.id }}">
+                  Show Previous Positions
+                </button>
+                <div class="collapse mt-2" id="previous-positions-{{ person.id }}">
+                  {% for role in person.lab_roles.all %}
+                    {% if role.end_date %}
+                      {{ role|safe }} ({{ role.start_date }} to {{ role.end_date }})<br />
+                    {% endif %}
+                  {% endfor %}
+                </div>
+              </dd>
+            {% endif %}
+
+            {% if person.degrees.all %}
+              <dt class="col-sm-4">Degrees</dt>
+              <dd class="col-sm-8">
+                {% for degree in person.degrees.all %}
+                  {{ degree }}{% if degree.date_awarded %}, awarded {{ degree.date_awarded|date:"Y" }}{% endif %}<br />
+                  <meta itemprop="alumniOf" itemscope itemtype="http://schema.org/EducationalOrganization">
+                    <meta itemprop="name" content="{{ degree.organization.name }}">
+                  </meta>
+                {% endfor %}
+              </dd>
+            {% endif %}
+
+            {% if person.email %}
+              <dt class="col-sm-4">Email</dt>
+              <dd class="col-sm-8">
+                <a itemprop="email" href="mailto:{{ person.email }}">{{ person.email }}</a>
+              </dd>
+            {% endif %}
+
+            {% if person.phone %}
+              <dt class="col-sm-4">Phone</dt>
+              <dd class="col-sm-8"><span itemprop="telephone">{{ person.phone }}</span></dd>
+            {% endif %}
+
+            {% if person.orcid_id %}
+              <dt class="col-sm-4">ORCID ID</dt>
+              <dd class="col-sm-8">
+                <a itemprop="sameAs" href="http://orcid.org/{{ person.orcid_id }}">{{ person.orcid_id }}</a>
+              </dd>
+            {% endif %}
+
+            {% if person.twitter_username %}
+              <dt class="col-sm-4">Social Media</dt>
+              <dd class="col-sm-8">
+                <a href="https://twitter.com/{{ person.twitter_username }}" class="twitter-follow-button" 
+                   data-show-count="true" data-lang="en" data-size="large">
+                  Follow @{{ person.twitter_username }}
+                </a>
+              </dd>
+              <script async src="//platform.twitter.com/widgets.js" charset="utf-8"></script>
+            {% endif %}
+          </dl>
+        </div>
+      </div>
+    </div>
+
+    {% if person.image %}
+    <div class="col-md-4 mb-3 d-flex align-items-start justify-content-center">
+      <a href="{{ person.image.url }}" data-featherlight="image">
+        <img id="image" src="{{ person.image.url }}" alt="Photo of {{ person }}" class="img-thumbnail w-100" />
+      </a>
+    </div>
     {% endif %}
-  {% endfor %}
+  </section>
 
-  {% comment %} Show/hide toggle button and hidden roles {% endcomment %}
-  <button class="btn btn-sm btn-outline-secondary mt-2" type="button" 
-          data-bs-toggle="collapse" data-bs-target="#previous-positions-{{ person.id }}">
-    Show Previous Positions
-  </button>
+  {% if person.biography %}
+  <section class="row mb-4">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="h5">Bio</h2>
+        </div>
+        <div class="card-body">
+          <p>{{ person.biography }}</p>
+        </div>
+      </div>
+    </div>
+  </section>
+  {% endif %}
 
-  <div class="collapse mt-2" id="previous-positions-{{ person.id }}">
-    {% for role in person.lab_roles.all %}
-      {% if role.end_date %}
-        <dd>
-          {{ role|safe }}. ({{ role.start_date }} to {{ role.end_date }})
-        </dd>
-      {% endif %}
-    {% endfor %}
-  </div>
-{% endif %}
-    
-    {% if person.degrees.all %}
-    <dt>Degrees</dt>
-    <dd>
-    {% for degree in person.degrees.all %}
-    {{ degree }}.  {% if degree.date_awarded %}Awarded in {{degree.date_awarded|date:"Y" }}.{% endif %}<br/>
-    <span itemprop='alumniOf' itemscope itemtype='http://schema.org/EducationalOrganization'>
-    <meta itemprop='name' content='{{ degree.organization.name }}'/>
-    </span>
-    {% endfor %}
-    </dd>
-    {% endif %}
-
-        {% if person.email %}
-	<dt>Email</dt>
-	<dd><a itemprop='email' href='mailto:{{ person.email }}'>{{ person.email }}</a></dd>
-	{% endif %}
-
-        {% if person.phone %}
-	<dt>Phone</dt>
-	<dd><span itemprop='telephone'>{{ person.phone }}</span></dd>
-	{% endif %}
-
-        {% if person.orcid_id %}
-        <dt>ORCID Identification Number</dt>
-        <dd><a itemprop='sameAs' href='http://orcid.org/{{ person.orcid_id }}'>{{ person.orcid_id }}</a></dd>         
-        {% endif %}
-
-        {% if person.biography %}
-        <dt>Bio</dt>
-        <dd>{{ person.biography }}</dd>
-        {% endif %}  
-
-	{% if person.twitter_username %}
-	<dt>Social Media</dt>
-	<dd>
-	<a href="https://twitter.com/{{ person.twitter_username }}" class="twitter-follow-button" data-show-count="true" data-lang="en" data-size="large">Follow @{{ person.twitter_username }}</a>
-    <script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0];if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src="//platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
-
-{% endif %}    
-	</dd>
-</dl>
-{% if person.image %}
-</div>
-<div class="col-5">
-<a href="{{ person.image.url }}" data-featherlight="image">
-<img id='image' src='{{ person.image.url }}' alt='Photo of {{ person }}' class='img-thumbnail'/>
-</a>
-</div>
-{% endif %}
-</section>
-
-{% if person.authordetails_set.all.exists %}
-<section id='papers' class='col-md-12'>
-<div class='panel panel-default'>
-<div class='panel-heading'>
-<h2 class='panel-title'>Publications</h2>
-</div>
-<div class='panel-body'>
-<ol>
-{% for detail in person.authordetails_set.all %}
-{% for paper in detail.publication_set.all|dictsort:"year"  %}
-
-<div class="row">
-<div class="col-md-12">
-{% include "paper-detail-snippet.html" %}
-</div>
-</div>
-{% endfor %}
-{% endfor %}
-</ol>
-</div>
-{% endif %}
-{% endblock %}
-</section>
+  {% if person.authordetails_set.all.exists %}
+  <section id="papers" class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="h5">Publications</h2>
+        </div>
+        <div class="card-body">
+          <ol class="list-group list-group-numbered">
+            {% for detail in person.authordetails_set.all %}
+              {% for paper in detail.publication_set.all|dictsort:"year" %}
+                <li class="list-group-item">
+                  {% include "paper-detail-snippet.html" %}
+                </li>
+              {% endfor %}
+            {% endfor %}
+          </ol>
+        </div>
+      </div>
+    </div>
+  </section>
+  {% endif %}
 </article>
+{% endblock %}
