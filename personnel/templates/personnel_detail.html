@@ -15,23 +15,31 @@
 <div class='col-7' id='details'>
 <dl>
     {% if person.lab_roles.all %}
-    <dt>Position</dt>
-    {% for role in person.lab_roles.all %}
-      {% if not role.end_date %}
+  <dt>Position</dt>
+  {% for role in person.lab_roles.all %}
+    {% if not role.end_date %}
       <dd>
-      {{ role|safe }}.  ({{ role.start_date|timesince }}).
+        {{ role|safe }}. ({{ role.start_date|timesince }}).
       </dd>
-      {% endif %}
+    {% endif %}
+  {% endfor %}
 
+  {% comment %} Show/hide toggle button and hidden roles {% endcomment %}
+  <button class="btn btn-sm btn-outline-secondary mt-2" type="button" 
+          data-bs-toggle="collapse" data-bs-target="#previous-positions-{{ person.id }}">
+    Show Previous Positions
+  </button>
+
+  <div class="collapse mt-2" id="previous-positions-{{ person.id }}">
+    {% for role in person.lab_roles.all %}
       {% if role.end_date %}
-      <div class="previous-positions">
-      <dd>
-      {{ role|safe }}.  ({{ role.start_date }} to {{role.end_date}})<br/>
-      </dd>
-      </div>
+        <dd>
+          {{ role|safe }}. ({{ role.start_date }} to {{ role.end_date }})
+        </dd>
       {% endif %}
     {% endfor %}
-    {% endif %}
+  </div>
+{% endif %}
     
     {% if person.degrees.all %}
     <dt>Degrees</dt>
