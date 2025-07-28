@@ -120,12 +120,10 @@
           <h2 class="h5">Publications</h2>
         </div>
         <div class="card-body">
-          <ol class="list-group list-group-numbered">
+          <ol>
             {% for detail in person.authordetails_set.all %}
               {% for paper in detail.publication_set.all|dictsort:"year" %}
-                <li class="list-group-item">
                   {% include "paper-detail-snippet.html" %}
-                </li>
               {% endfor %}
             {% endfor %}
           </ol>
