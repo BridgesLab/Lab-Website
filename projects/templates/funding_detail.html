@@ -6,75 +6,197 @@
 {% endblock %}
 
 {% block header %}
-<h1 class="text-center">{{ funding }}</h1>
+<div class="container-fluid">
+    <h1 class="text-center mb-4">{{ funding }}</h1>
+</div>
 {% endblock %}
 
 {% block content %}
-<article>
-{% if funding.funding_agency.logo %}
-<section id="summary" class="col-md-12">
-<div id="logo" class="col-md-4">
-<a href="{{ funding.funding_agency.website }}">
-<img src="{{ funding.funding_agency.logo.url }}" class="img-responsive"  alt="logo" />
-</a>
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-10 col-xl-8">
+            <article>
+                <!-- Main funding card -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-body">
+                        <!-- Header section with logo and basic details -->
+                        <section id="summary">
+                            <div class="row align-items-center mb-4">
+                                {% if funding.funding_agency.logo %}
+                                <div class="col-12 col-md-4 text-center mb-3 mb-md-0">
+                                    <div id="logo">
+                                        <a href="{{ funding.funding_agency.website }}">
+                                            <img src="{{ funding.funding_agency.logo.url }}" 
+                                                 class="img-fluid rounded shadow-sm" 
+                                                 alt="{{ funding.funding_agency.name }} logo"
+                                                 style="max-height: 120px; width: auto;" />
+                                        </a>
+                                    </div>
+                                </div>
+                                <div class="col-12 col-md-8">
+                                {% else %}
+                                <div class="col-12">
+                                {% endif %}
+                                    <!-- Funding details -->
+                                    <div id="details" class="row">
+                                        <div class="col-12 col-sm-6">
+                                            <dl class="row">
+                                                {% if funding.grant_id %}
+                                                <dt class="col-sm-5 col-4 text-muted">Grant ID</dt>
+                                                <dd class="col-sm-7 col-8 fw-bold">{{ funding.grant_id }}</dd>
+                                                {% endif %}
+
+                                                {% if funding.amount %}
+                                                <dt class="col-sm-5 col-4 text-muted">Amount</dt>
+                                                <dd class="col-sm-7 col-8 fw-bold text-success fs-5">${{ funding.amount | intcomma }}</dd>
+                                                {% endif %}
+                                            </dl>
+                                        </div>
+                                        <div class="col-12 col-sm-6">
+                                            <dl class="row">
+                                                {% if funding.start_date %}
+                                                <dt class="col-sm-5 col-4 text-muted">Start Date</dt>
+                                                <dd class="col-sm-7 col-8">{{ funding.start_date|date:"F j, Y" }}</dd>
+                                                {% endif %}
+
+                                                {% if funding.end_date %}
+                                                <dt class="col-sm-5 col-4 text-muted">End Date</dt>
+                                                <dd class="col-sm-7 col-8">{{ funding.end_date|date:"F j, Y" }}</dd>
+                                                {% endif %}
+                                            </dl>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+
+                <!-- Summary section -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header">
+                        <h2 class="card-title h5 mb-0">
+                            <i class="bi bi-card-text me-2"></i>Summary
+                        </h2>
+                    </div>
+                    <div class="card-body">
+                        <section id="abstract">
+                            {{ funding.summary | safe }}
+                        </section>
+                    </div>
+                </div>
+
+                <!-- Full text section (if available) -->
+                {% if funding.full_text %}
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header">
+                        <h2 class="card-title h5 mb-0">
+                            <i class="bi bi-file-text me-2"></i>Full Details
+                        </h2>
+                    </div>
+                    <div class="card-body">
+                        <section id="full_text">
+                            {{ funding.full_text | safe }}
+                        </section>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Publications section -->
+                {% if funding.publications.all.count > 0 %}
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-success text-white">
+                        <h2 class="card-title h5 mb-0">
+                            <i class="bi bi-journal-text me-2"></i>
+                            Publications Supported by This Award
+                            <span class="badge bg-light text-dark ms-2">{{ funding.publications.all.count }}</span>
+                        </h2>
+                    </div>
+                    <div class="card-body">
+                        <section id="publications">
+                            <div class="row g-3">
+                                {% for paper in funding.publications.all %}
+                                <div class="col-12">
+                                    <div class="border rounded p-3 bg-light">
+                                        {% include "paper-detail-snippet.html" %}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </section>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Comments section -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header">
+                        <h2 class="card-title h5 mb-0">
+                            <i class="bi bi-chat-dots me-2"></i>Comments
+                        </h2>
+                    </div>
+                    <div class="card-body">
+                        <section id="comments">
+                            {% include 'disqus_snippet.html' %}
+                        </section>
+                    </div>
+                </div>
+
+                <!-- Back to list button -->
+                <div class="text-center mb-4">
+                    <a href="{% url 'funding-list' %}" class="btn btn-outline-primary">
+                        <i class="bi bi-arrow-left me-2"></i>Back to Funding List
+                    </a>
+                </div>
+            </article>
+        </div>
+    </div>
 </div>
-{% endif %}
 
-<div class="col-md-8" id="details">
-<dl class="col-md-4">
-   {% if funding.grant_id %}
-    <dt>Grant ID<dt>
-        <dd>{{ funding.grant_id }}</dd>
-   {% endif %}
+<style>
+/* Custom styles for the funding detail page */
+.card {
+    transition: box-shadow 0.15s ease-in-out;
+}
 
-   {% if funding.amount %}
-    <dt>Amount<dt>
-        <dd>${{ funding.amount | intcomma }}</dd>
-   {% endif %}
-</dl>
-<dl class="col-md-4">
-   {% if funding.start_date %}
-    <dt>Start Date<dt>
-        <dd>{{ funding.start_date }}</dd>
-   {% endif %}
+.card:hover {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1) !important;
+}
 
-   {% if funding.end_date %}
-    <dt>End Date<dt>
-        <dd>{{ funding.end_date }}</dd>
-   {% endif %}
-</dl>
-</div>
-</section>
+/* Better spacing for definition lists */
+dl.row dt {
+    font-weight: 600;
+}
 
-<div class="col-md-12">
-<section id="abstract" class="panel panel-info">
-<div class="panel-heading">
-<h2 class="panel-title">Summary</h2>
-</div>
-<div class="panel-body">
-<p>{{ funding.summary | safe}}</p>
-</div>
-</section>
-</div>
+dl.row dd {
+    margin-bottom: 0.75rem;
+}
 
+/* Responsive font sizing */
+@media (max-width: 576px) {
+    .fs-5 {
+        font-size: 1.1rem !important;
+    }
+    
+    dl.row dt,
+    dl.row dd {
+        font-size: 0.9rem;
+    }
+    
+    .card-title {
+        font-size: 1rem !important;
+    }
+}
 
-{% if funding.full_text %}
-<section id="full_text">
-{{ funding.full_text | safe }}
-</section>
-{% endif %}
-{% if funding.publications.all.count > 0 %}
-<section id="publications" class="col-md-12">
-<h2>Which publications were supported by this award?</h2>
-{% for paper in funding.publications.all %}
-{% include "paper-detail-snippet.html" %}
-{% endfor %}
-</section>
-{% endif %}
+/* Better readability for content */
+.card-body p {
+    line-height: 1.6;
+}
 
-<section id="comments" class="col-md-12">
-<h2>Comments</h2>
-{% include 'disqus_snippet.html' %}
-</section>
-</article>
+/* Style for publication items */
+.bg-light {
+    background-color: #f8f9fa !important;
+    border: 1px solid #e9ecef !important;
+}
+</style>
 {% endblock content %}
