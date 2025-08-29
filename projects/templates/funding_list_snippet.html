@@ -1,40 +1,66 @@
 {% load humanize %}
 
-<section id="{{ funding.title_slug }}">
+<!-- Responsive card wrapper: 50% width on desktop, full width on mobile -->
+<div class="col-12 col-lg-6">
+    <section id="{{ funding.title_slug }}">
+        <div class="card h-100 shadow-sm">
+            <!-- Card Header -->
+            <div id="{{ funding.title_slug}}-details" class="card-header">
+                <h3 class="card-title h5 mb-0">
+                    <a href="{{ funding.get_absolute_url }}" class="text-decoration-none text-dark">
+                        {{ funding }}
+                    </a>
+                </h3>
+            </div>
+            
+            <!-- Card Body -->
+            <div class="card-body d-flex flex-column">
+                <div class="row">
+                    <!-- Logo Section -->
+                    {% if funding.funding_agency.logo %}
+                    <div class="col-12 col-sm-4 text-center mb-3">
+                        <a href="{{ funding.funding_agency.website }}">
+                            <img class="img-fluid rounded" 
+                                 src="{{ funding.funding_agency.logo.url }}" 
+                                 alt="{{ funding.funding_agency.name }} logo"
+                                 style="max-height: 80px; width: auto;" />
+                        </a>
+                    </div>
+                    <div class="col-12 col-sm-8">
+                    {% else %}
+                    <div class="col-12">
+                    {% endif %}
+                        <!-- Funding Details -->
+                        <dl class="row small mb-0">
+                            {% if funding.grant_id %}
+                            <dt class="col-sm-4 col-6">Grant ID</dt>
+                            <dd class="col-sm-8 col-6 fw-bold">{{ funding.grant_id }}</dd>
+                            {% endif %}
 
-<div id="{{ funding.title_slug}}-details" class="card-header">
-<h3 class="card-title"><a href="{{ funding.get_absolute_url }}" class="text-decoration-none text-dark">{{ funding }}</a></h3>
+                            {% if funding.start_date %}
+                            <dt class="col-sm-4 col-6">Start Date</dt>
+                            <dd class="col-sm-8 col-6">{{ funding.start_date }}</dd>
+                            {% endif %}
+
+                            {% if funding.end_date %}
+                            <dt class="col-sm-4 col-6">End Date</dt>
+                            <dd class="col-sm-8 col-6">{{ funding.end_date }}</dd>
+                            {% endif %}
+
+                            {% if funding.amount %}
+                            <dt class="col-sm-4 col-6">Amount</dt>
+                            <dd class="col-sm-8 col-6 fw-bold text-success">${{ funding.amount | intcomma }}</dd>
+                            {% endif %}
+                        </dl>
+                    </div>
+                </div>
+
+                <!-- Summary Section -->
+                <div class="card-text flex-grow-1 mt-3" id="{{funding}}-summary">
+                    <h6 class="text-primary mb-2">Summary</h6>
+                    <p class="text-muted">{{ funding.summary|safe }}</p>
+                </div>
+            </div>
+        </div>
+    </section>
 </div>
-<div class="card-body">
-<div id="logo" class="col">
-{% if funding.funding_agency.logo %}
-<a href="{{ funding.funding_agency.website }}"><img class="card-img-top" src="{{ funding.funding_agency.logo.url }}" /></a>
-{% endif %}
-<dl>
-   {% if funding.grant_id %}
-   <dt>Grant ID</dt>
-      <dd>{{ funding.grant_id }}</dd> 
-   {% endif %}
-
-   {% if funding.start_date %}
-    <dt>Start Date<dt>
-        <dd>{{ funding.start_date }}</dd>
-   {% endif %}
-
-   {% if funding.end_date %}
-    <dt>End Date<dt>
-        <dd>{{ funding.end_date }}</dd>
-   {% endif %}
-
-   {% if funding.amount %}
-    <dt>Amount<dt>
-        <dd>${{ funding.amount | intcomma }}</dd>
-   {% endif %}
-
-</dl>
-</div>
-<div class="card-text" id="{{funding}}-summary">
-<p>{{funding.summary|safe}}</p>
-</div>
-
-</section>

@@ -8,14 +8,54 @@
 {% endblock %}
 
 {% block header %}
-<h1>Current Funding in the Lab</h1>
+<div class="container-fluid">
+    <h1 class="text-center mb-4">Current Funding in the Lab</h1>
+</div>
 {% endblock %}
 
 {% block content %}
-<article id="funding" class="container col-md-12">
-{% for funding in funding_list %}
-{% include "funding_list_snippet.html" %}
-{% endfor %}
-</section>
-</article>
+<div class="container-fluid">
+    <div class="row g-4" id="funding">
+        {% for funding in funding_list %}
+        {% include "funding_list_snippet.html" %}
+        {% empty %}
+        <div class="col-12">
+            <div class="text-center py-5">
+                <div class="text-muted">
+                    <i class="bi bi-search fs-1 mb-3 d-block"></i>
+                    <h3>No funding records found</h3>
+                    <p>There are currently no funding records to display.</p>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<style>
+/* Custom styles for consistent card heights and hover effects */
+.card {
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Ensure all detail boxes have consistent height */
+.funding-detail-box {
+    min-height: 60px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+/* Responsive adjustments */
+@media (max-width: 576px) {
+    .funding-detail-box {
+        min-height: 50px;
+    }
+}
+</style>
 {% endblock content %}
