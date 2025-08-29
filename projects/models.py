@@ -140,6 +140,11 @@ class Funding(models.Model):
         if not self.id:
             self.title_slug = slugify(self.title)
         super(Funding, self).save(*args, **kwargs)
+    
+    class Meta:
+        '''The meta options for the :class:`projects.models.Funding` model is ordering set by active status, then by end_date descending, then by start_date descending, then by amount descending.'''
+        ordering = ['-active','-end_date','-start_date','-amount']
+        verbose_name_plural = "funding"
         
 class FundingAgency(models.Model):
     '''This model describes the funding agency.
