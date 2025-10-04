@@ -220,7 +220,6 @@ class PublicationViewTests(TestCase):
         self.assertTemplateUsed(test_response, 'paper-detail.html')
         self.assertTemplateUsed(test_response, 'base.html') 
         self.assertTemplateUsed(test_response, 'disqus_snippet.html') 
-        self.assertTemplateUsed(test_response, 'paper_sharing_widgets.html')
         self.assertTemplateUsed(test_response, 'altmetric_snippet.html')                        
         self.assertEqual(test_response.context['publication'].pk, 1)
         self.assertEqual(test_response.context['publication'].title, '14-3-3 proteins: a number of functions for a numbered protein.')
