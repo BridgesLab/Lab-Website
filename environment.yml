@@ -1,89 +1,72 @@
-name: django2env.py3.13
+name: lab-website
 channels:
   - defaults
   - conda-forge
 dependencies:
-  - bzip2=1.0.8
-  - ca-certificates=2025.2.25
-  - expat=2.7.1
-  - libcxx=17.0.6
-  - libffi=3.4.4
-  - libmpdec=4.0.0
-  - mysqlclient==2.2.7
-  - ncurses=6.4
-  - openssl=3.0.16
-  - pip=25.1
   - python=3.13
-  - python_abi=3.13
-  - gunicorn
-  - readline=8.2
+  - pip=25.1
   - setuptools=78.1.1
-  - sqlite=3.45.3
-  - tk=8.6.14
-  - tzdata=2025b
   - wheel=0.45.1
-  - xz=5.6.4
-  - zlib=1.2.13
-  - djangorestframework==3.16.0
-  - django-filter==25.1
+  - mysqlclient=2.2.7
   - pip:
-      - alabaster==1.0.0
-      - asgiref==3.11.0
-      - attrs==25.3.0
-      - babel==2.17.0
-      - certifi==2025.11.12
-      - charset-normalizer==3.4.4
-      - defusedxml==0.7.1
-      - Django==6.0
-      - django-ajax-selects==3.0.3
-      - django-braces==1.17.0
-      - django-cors-headers==4.9.0
-      - django-filter==25.2
-      - django-tastypie==0.15.1
-      - djangorestframework==3.16.1
+      # Core Django - install from pre-release or source
+      - Django>=6.0a1,<7.0
+      - asgiref>=3.8.0
+      - sqlparse>=0.5.0
+      
+      # Django REST Framework
+      - djangorestframework>=3.15.0
       - djangorestframework-xml==2.0.0
-      - docutils==0.22.3
       - drf-spectacular==0.29.0
-      - gunicorn @ file:///private/var/folders/sy/f16zz6x50xz3113nwtb9bvq00000gp/T/abs_2bfdohb_6i/croot/gunicorn_1744295963743/work
-      - httplib2==0.31.0
-      - idna==3.11
+      
+      # Django Extensions
+      - django-cors-headers>=4.0.0
+      - django-filter>=24.0
+      - django-tastypie==0.15.1
+      
+      # Server
+      - gunicorn==23.0.0
+      
+      # Documentation
+      - Sphinx>=8.0.0
+      - alabaster==1.0.0
+      - babel>=2.15.0
+      - docutils>=0.20.0
       - imagesize==1.4.1
-      - importlib_metadata==7.1.0
-      - inflection==0.5.1
-      - Jinja2==3.1.6
-      - jsonschema==4.24.0
-      - jsonschema-specifications==2025.4.1
-      - lxml==6.0.2
-      - Markdown==3.10
-      - MarkupSafe==2.0.1
-      - oauthlib==3.3.1
-      - packaging @ file:///private/var/folders/c_/qfmhj66j0tn016nkx_th4hxm0000gp/T/abs_15t4xe1fp0/croot/packaging_1734472125760/work
-      - pillow==12.0.0
-      - Pygments==2.19.2
-      - pyparsing==3.1.4
-      - python-dateutil==2.9.0.post0
-      - python-mimeparse==1.6.0
-      - pytz==2025.2
-      - PyYAML==6.0.3
-      - referencing==0.36.2
-      - requests==2.32.5
-      - requests-oauthlib==2.0.0
-      - roman-numerals==3.1.0
-      - rpds-py==0.26.0
-      - setuptools==78.1.1
-      - six==1.17.0
-      - snowballstemmer==3.0.1
-      - Sphinx==9.0.4
+      - Jinja2>=3.1.0
+      - MarkupSafe>=2.0.0
+      - Pygments>=2.17.0
+      - snowballstemmer>=2.2.0
       - sphinxcontrib-applehelp==2.0.0
       - sphinxcontrib-devhelp==2.0.0
       - sphinxcontrib-htmlhelp==2.1.0
       - sphinxcontrib-jsmath==1.0.1
       - sphinxcontrib-qthelp==2.0.0
       - sphinxcontrib-serializinghtml==2.0.0
-      - sqlparse @ file:///Users/builder/cbouss/buildout/croot/sqlparse_1739491565386/work
-      - typing_extensions==4.11.0
-      - uritemplate==4.2.0
-      - urllib3==2.6.1
-      - wheel==0.45.1
-      - zipp==3.19.1
-prefix: /opt/miniconda3/envs/django2env.py3.13
+      
+      # Utilities
+      - certifi
+      - charset-normalizer
+      - defusedxml==0.7.1
+      - idna
+      - jsonschema>=4.20.0
+      - jsonschema-specifications
+      - lxml>=5.0.0
+      - Markdown>=3.5.0
+      - oauthlib>=3.2.0
+      - packaging>=24.0
+      - pillow>=11.0.0
+      - pyparsing
+      - python-dateutil
+      - pytz
+      - PyYAML>=6.0
+      - referencing
+      - requests>=2.31.0
+      - requests-oauthlib>=2.0.0
+      - rpds-py
+      - typing_extensions
+      - uritemplate
+      - urllib3>=2.0.0
+      - zipp
+      - attrs
+      - importlib_metadata
