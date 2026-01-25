@@ -6,6 +6,50 @@
   <link rel="canonical" href="{{ post.get_absolute_url }}">
   <meta property="op:markup_version" content="v1.0">
   <script type="text/javascript" src="{{ STATIC_URL }}javascript/twitter.js"></script>
+<!-- If posts have footnotes in them load littlefoot.js -->
+{% if has_citations %}
+  <link rel="stylesheet" href="https://unpkg.com/littlefoot/dist/littlefoot.css" />
+  <script src="https://unpkg.com/littlefoot/dist/littlefoot.js" type="text/javascript"></script>
+  
+  <script type="text/javascript">
+  document.addEventListener('DOMContentLoaded', function() {
+    littlefoot.default({
+      activateOnHover: true,
+      dismissDelay: 300,
+      hoverDelay: 250,
+      buttonTemplate: `
+        <button 
+          aria-label="Footnote <% number %>" 
+          class="littlefoot__button" 
+          id="<% reference %>" 
+          title="See Reference <% number %>"
+        >
+          <% number %>
+        </button>`
+    });
+  });
+</script>
+<!--enables mathjax-->
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']],
+    processEscapes: true,
+    // This tells MathJax to look for math in these specific tags
+    processEnvironments: true
+  },
+  options: {
+    // This ensures it looks inside the container where your post lives
+    renderActions: {
+      addMenu: [] // Optional: removes the MathJax context menu
+    }
+  }
+};
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+{% endif %}
+
 {% endblock %}
 
 {% block title %}
