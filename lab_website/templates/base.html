@@ -27,6 +27,15 @@
   "@type": "EducationalOrganization",
   "name": "{{ lab_name }}",
   "url": "{{ request.scheme }}://{{ request.get_host }}",
+  {% if api_url %}
+  "publishingPrinciples": "{{ api_url }}",
+  "mainEntityOfPage": {
+    "@type": "WebAPI",
+    "name": "{{ lab_name }} Data API",
+    "description": "Public DRF API for lab publications, members, and research data.",
+    "documentation": "{{ api_url }}"
+  },
+  {% endif %}
   "address": {
     "@type": "PostalAddress",
     "streetAddress": "{{ actual_address.line_1 }}{% if actual_address.line_2 %}, {{ actual_address.line_2 }}{% endif %}",
