@@ -20,6 +20,29 @@
 {% endblock %}
 
 {% block title %}<title>Generic Page Title</title>{% endblock %}
+{% if actual_address %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "EducationalOrganization",
+  "name": "{{ lab_name }}",
+  "url": "{{ request.scheme }}://{{ request.get_host }}",
+  "address": {
+    "@type": "PostalAddress",
+    "streetAddress": "{{ actual_address.line_1 }}{% if actual_address.line_2 %}, {{ actual_address.line_2 }}{% endif %}",
+    "addressLocality": "{{ actual_address.city }}",
+    "addressRegion": "{{ actual_address.state }}",
+    "postalCode": "{{ actual_address.code }}",
+    "addressCountry": "{{ actual_address.country }}"
+  },
+  "sameAs": [
+    {% if twitter_handle %}"https://twitter.com/{{ twitter_handle }}"{% endif %}
+    {% if facebook_handle %}, "https://facebook.com/{{ facebook_handle }}"{% endif %}
+    {% if google_plus_id %}, "https://plus.google.com/{{ google_plus_id }}"{% endif %}
+  ]
+}
+</script>
+{% endif %}
 </head>
 
 <body class="container" itemscope itemtype="http://schema.org/WebPage">
