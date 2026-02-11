@@ -19,3 +19,4 @@ User-agent: Bytedance
 Disallow: /
 
 Sitemap: http://bridgeslab.sph.umich.edu/sitemap.xml
+Sitemap: http://bridgeslab.sph.umich.edu/protocols/sitemap-index-bridgeslabproto-mw_.xml
