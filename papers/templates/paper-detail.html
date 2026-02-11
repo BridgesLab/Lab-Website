@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+
 {% block scripts %}
 <script type='text/javascript' src='http://cdn.altmetric.com/embed.min.js'></script>
 <script type='text/javascript'>
@@ -6,7 +7,49 @@ $(function () {
   $('[data-toggle="tooltip"]').tooltip()
 })
 </script>
-{% endblock %}
+
+{# --- NEW STRUCTURED DATA BLOCK --- #}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "ScholarlyArticle",
+      "@id": "{{ request.build_absolute_uri }}#paper",
+      "headline": "{{ publication.title|escapejs }}",
+      "name": "{{ publication.title|escapejs }}",
+      "description": "{{ publication.abstract|striptags|truncatewords:50|escapejs }}",
+      "abstract": "{{ publication.abstract|striptags|escapejs }}",
+      {% if publication.year %}"datePublished": "{{ publication.year }}",{% endif %}
+      {% if publication.doi %}"identifier": "https://doi.org/{{ publication.doi }}",{% endif %}
+      "url": "{{ publication.doi_link }}",
+      "author": [
+        {% for author_relation in publication.authors.all|dictsort:"order" %}
+        {
+          "@type": "Person",
+          "name": "{{ author_relation.name|escapejs }}"
+          {% if author_relation.author.get_absolute_url %},
+          "url": "{{ request.scheme }}://{{ request.get_host }}{{ author_relation.author.get_absolute_url }}"
+          {% endif %}
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+      ],
+      "publisher": {
+        "@type": "Organization",
+        "name": "{{ publication.journal|escapejs }}"
+      },
+      "isPartOf": {
+        "@type": "PublicationIssue",
+        "name": "{{ publication.journal|escapejs }}",
+        "volumeNumber": "{{ publication.volume }}",
+        {% if paper.issue %}"issueNumber": "{{ paper.issue }}",{% endif %}
+        "pagination": "{{ publication.pages }}"
+      }
+    }
+  ]
+}
+</script>
+{% endblock scripts %}
 
 {% block title %}<title>{{ publication }}</title>{% endblock %}
 
@@ -14,45 +57,41 @@ $(function () {
 <h1 class="text-center display-4">{{ publication }}</h1>
 {% endblock %}
 
-{% block sidebar-insertion %}
-{% endblock %}
-
 {% block content %}
-<article itemscope itemtype="http://schema.org/ScholarlyArticle" id='paper' class="container">
-<meta itemprop="name" content="{{ publication.title }}" />
+<article id='paper' class="container">
 
 <section id="authors">
 <p class="text-center lead">
-{% if publication.authors.count == 1 %}
-{% for author in publication.authors.all %}
-{% if author.author.current_lab_member %}<a href='{{ author.author.get_absolute_url }}' class="text-decoration-none text-dark">{{ author.name }}</a>{% else %}{{ author.name }}{% endif %}
-{% endfor %}
-{% else %}
 {% for author in publication.authors.all|dictsort:"order" %}
-{% if forloop.revcounter == 1 %} and {% endif %} {% if author.author.current_lab_member %}<a itemprop="author" itemscope itemtype="http://schema.org/Person" href='{{ author.author.get_absolute_url }}' class='text-decoration-none text-dark'><span itemprop="name">{{ author.name}}</span></a>{% else %}{{ author.name }}{% endif %}{% if forloop.revcounter > 2 %}, {% endif %}
+    {% if author.author.current_lab_member %}
+        <a href='{{ author.author.get_absolute_url }}' class="text-decoration-none text-dark">{{ author.name }}</a>
+    {% else %}
+        {{ author.name }}
+    {% endif %}
+    {% if not forloop.last %}, {% endif %}
 {% endfor %}
-{% endif %}
 </p>
 </section>
 
 <section id='publication' class='text-center'>
-<strong itemprop='publisher'>{{ publication.journal }}</strong> {% if publication.year %}<span itemprop='copyrightYear datePublished'>{{ publication.year }}</span>. {% endif %}{% if publication.volume %} {{ publication.volume}}{% if paper.issue %}({{ paper.issue }}){% endif %}: {{ publication.pages }}.{% endif %}
+<strong>{{ publication.journal }}</strong> 
+{% if publication.year %}<span>{{ publication.year }}</span>. {% endif %}
+{% if publication.volume %} {{ publication.volume }}{% if paper.issue %}({{ paper.issue }}){% endif %}: {{ publication.pages }}.{% endif %}
 {% if publication.preprint %}
-<span class="badge bg-danger">This work is a preprint and is currently under review.</span>
+<br><span class="badge bg-danger">This work is a preprint and is currently under review.</span>
 {% endif %}
 </section>
 
-<div class="row">
+<div class="row mt-4">
   <section class="col-12 col-lg-8">
     <div class="card">
       <div class="card-header">
         <h2 class="card-title">Abstract</h2>
       </div>
       <div class="card-body">
-        <p itemprop='description'>{{ publication.abstract | safe }}</p>
+        <p>{{ publication.abstract | safe }}</p>
         {% if publication.doi %}
-        <p><a itemprop='url' href="{{ publication.doi_link }}">Link to Full Text of Paper</a></p>
-        <meta itemprop='discussionUrl' content='{{ request.build_absolute_uri }}'/>
+        <p><a href="{{ publication.doi_link }}" target="_blank">Link to Full Text of Paper</a></p>
         {% endif %}
       </div>
     </div>
@@ -63,66 +102,50 @@ $(function () {
       <div class="card-header">
         <h2 class="card-title">Metrics</h2>
       </div>
-      <div class="card-body">
+      <div class="card-body text-center">
         {% if publication.doi %}
-        {% with publication as paper %}
-        {% include 'altmetric_snippet.html' %}
-        {% endwith %}
+            {% with publication as paper %}
+                {% include 'altmetric_snippet.html' %}
+            {% endwith %}
         {% endif %}
       </div>
     </div>
   </section>
 </div>
 
-{% for author_details in publication.authors.all|dictsort:"order" %}
-{% if forloop.first %}
-{% if author_details.contribution.all.exists %}
-<section class="card">
+{% if publication.authors.all %}
+<section class="card mt-4">
   <div class="card-header">
     <h2 class="card-title">Author Contributions</h2>
   </div>
-{% endif %}
-{% endif %}
-{% endfor %}
-<div class="card-body">
-  <div class="row">
-    {% for author_details in publication.authors.all|dictsort:"order" %}
-    {% if author_details.contribution.all.exists %}
-    <div class="col"><h3>{{ author_details.author }}</h3>
-      {% for contribution in author_details.contribution.all %}
-      <img class="img-fluid custom-image" src='{{ contribution.image_url }}' alt="{{ contribution }}" title="{{ contribution }}" width="50"/>
+  <div class="card-body">
+    <div class="row text-center">
+      {% for author_details in publication.authors.all|dictsort:"order" %}
+        {% if author_details.contribution.all.exists %}
+        <div class="col">
+          <h3>{{ author_details.author }}</h3>
+          {% for contribution in author_details.contribution.all %}
+          <img class="img-fluid custom-image" src='{{ contribution.image_url }}' alt="{{ contribution }}" title="{{ contribution }}" width="50"/>
+          {% endfor %}
+        </div>
+        {% endif %}
       {% endfor %}
     </div>
-    {% endif %}
-    {% endfor %}
   </div>
 </section>
+{% endif %}
 
 {% if publication.commentary_set.all.exists %}
-<section id="commentary" class="container">
+<section id="commentary" class="container mt-4">
   <h2 class="display-6">Our Thoughts on This Paper</h2>
   {% for commentary in publication.commentary_set.all %}
-  <p>{{ commentary.comments|safe }}</p>
-  <p>Written by <a href="{{ commentary.author.get_absolute_url }}">{{ commentary.author }}</a> on {{ commentary.created }}.</p>
+  <div class="border-start ps-3 mb-3">
+    {{ commentary.comments|safe }}
+    <p class="text-muted small">Written by <a href="{{ commentary.author.get_absolute_url }}">{{ commentary.author }}</a> on {{ commentary.created }}.</p>
+  </div>
   {% endfor %}
 </section>
 {% endif %}
 
-{% if publication.post_set.all.exists %}
-<section id="commentary" class="container">
-  <h2 class="display-6">Posts about this paper</h2>
-  <ul>
-    {% for post in publication.post_set.all %}
-    <li><a href="{{ post.get_absolute_url }}">{{ post.post_title }}</a></li>
-    {% endfor %}
-  </ul>
-</section>
-{% endif %}
-
-<section id="comments" class="container">
-  <h2 class="display-6">Comments</h2>
-  {% include 'disqus_snippet.html' %}
-</section>
-
 </article>
-{% endblock %}
+{% endblock content %}
