@@ -1,5 +1,5 @@
 <div class="card-header">
-    <h3 class="card-title">
+    <h3 class="card-title h5">
         <a href="{{ person.get_absolute_url }}" class="text-decoration-none text-dark">
             {{ person }}
         </a>
@@ -7,13 +7,15 @@
 </div>
 {% if person.image %}
 <div class="position-relative">
-    <img src="{{ person.image.url }}" alt="{{ person }}" class="card-img-top" style="height: 200px; object-fit: cover;"/>
+    <a href="{{ person.get_absolute_url }}">
+        <img src="{{ person.image.url }}" alt="{{ person }}" class="card-img-top" style="height: 200px; object-fit: cover;"/>
+    </a>
 </div>
 {% endif %}
 <div class="card-body">
-    <div id="{{person|slugify|lower}}-details" class="card-text">
-        {% with person.lab_roles.all|first as first_object %}
-            {{ first_object|safe }}
+    <div id="{{person|slugify|lower}}-details" class="card-text text-muted small">
+        {% with person.lab_roles.all|first as first_role %}
+            {{ first_role|safe }}
         {% endwith %}
     </div>
 </div>
