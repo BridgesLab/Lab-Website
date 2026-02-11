@@ -20,14 +20,42 @@
 {% endblock %}
 
 {% block title %}<title>Generic Page Title</title>{% endblock %}
+{% if actual_address %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "EducationalOrganization",
+  "name": "{{ lab_name }}",
+  "url": "{{ request.scheme }}://{{ request.get_host }}",
+  {% if api_url %}
+  "publishingPrinciples": "{{ api_url }}",
+  "mainEntityOfPage": {
+    "@type": "WebAPI",
+    "name": "{{ lab_name }} Data API",
+    "description": "Public DRF API for lab publications, members, and research data.",
+    "documentation": "{{ api_url }}"
+  },
+  {% endif %}
+  "address": {
+    "@type": "PostalAddress",
+    "streetAddress": "{{ actual_address.line_1 }}{% if actual_address.line_2 %}, {{ actual_address.line_2 }}{% endif %}",
+    "addressLocality": "{{ actual_address.city }}",
+    "addressRegion": "{{ actual_address.state }}",
+    "postalCode": "{{ actual_address.code }}",
+    "addressCountry": "{{ actual_address.country }}"
+  },
+  "sameAs": [
+    {% if twitter_handle %}"https://twitter.com/{{ twitter_handle }}"{% endif %}
+    {% if facebook_handle %}, "https://facebook.com/{{ facebook_handle }}"{% endif %}
+    {% if google_plus_id %}, "https://plus.google.com/{{ google_plus_id }}"{% endif %}
+  ]
+}
+</script>
+{% endif %}
 </head>
 
-<body class="container" itemscope itemtype="http://schema.org/WebPage">
+<body>
 {% include "facebook_api_sdk_script.html" %}
-<span itemprop = "about" itemscope itemtype="http://schema.org/Organization">
-<meta itemprop = "url"  content="http://bridgeslab.sph.umich.edu"/>
-<meta itemprop = "name" content="{{ lab_name  }}"/>
-</span>
 <header>
 
 {% block navbar %}
