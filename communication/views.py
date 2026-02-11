@@ -376,7 +376,7 @@ class PostDetail(DetailView):
             # 'attr_list' allows you to add CSS classes to images/links in MD.
             context['post_data'] = markdown.markdown(
                 post_data_raw, 
-                extensions=['footnotes', 'tables', 'attr_list', 'def_list', 'fenced_code']
+                extensions=['footnotes', 'tables', 'attr_list', 'def_list', 'fenced_code','mdx_math',]
             )
             
         except (urllib.error.URLError, ValueError):
