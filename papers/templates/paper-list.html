@@ -13,8 +13,15 @@
       "@type": "{% if paper.preprint %}ScholarlyArticle{% else %}ScholarlyArticle{% endif %}",
       "headline": "{{ paper.title|escapejs }}",
       "name": "{{ paper.title|escapejs }}",
-      {% if paper.pub_date %}"datePublished": "{{ paper.pub_date|date:'c' }}",{% elif paper.year %}"datePublished": "{{ paper.year }}",{% endif %}
-      {% if paper.doi_link %}"identifier": "{{ paper.doi_link }}",{% endif %}
+      {% load tz %}
+        {% if paper.pub_date %}
+          {# Appends midnight and UTC offset to a standard date #}
+          "datePublished": "{{ paper.pub_date|date:'Y-m-d' }}T00:00:00+00:00",
+        {% elif paper.year %}
+          {# Converts a year into the first day of that year with full formatting #}
+          "datePublished": "{{ paper.year }}-01-01T00:00:00+00:00",
+        {% endif %}      
+    {% if paper.doi_link %}"identifier": "{{ paper.doi_link }}",{% endif %}
       "url": "{{ request.scheme }}://{{ request.get_host }}{{ paper.get_absolute_url }}",
       "author": [
         {% for author_relation in paper.authors.all|dictsort:"order" %}
