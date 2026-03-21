@@ -13,7 +13,7 @@
       "@type": "{% if paper.preprint %}ScholarlyArticle{% else %}ScholarlyArticle{% endif %}",
       "headline": "{{ paper.title|escapejs }}",
       "name": "{{ paper.title|escapejs }}",
-      {% if paper.pub_date %}"datePublished": "{{ paper.pub_date|date:'Y-m-d' }}",{% elif paper.year %}"datePublished": "{{ paper.year }}",{% endif %}
+      {% if paper.pub_date %}"datePublished": "{{ paper.pub_date|date:'c' }}",{% elif paper.year %}"datePublished": "{{ paper.year }}",{% endif %}
       {% if paper.doi_link %}"identifier": "{{ paper.doi_link }}",{% endif %}
       "url": "{{ request.scheme }}://{{ request.get_host }}{{ paper.get_absolute_url }}",
       "author": [
