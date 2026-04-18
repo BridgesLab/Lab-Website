@@ -8,6 +8,7 @@ import urllib.error
 import urllib.parse
 import datetime, time
 import requests
+from requests.exceptions import RequestException
 import markdown
 
 from django.conf import settings
