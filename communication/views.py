@@ -266,15 +266,15 @@ class DataResourceSharingPolicyView(TemplateView):
             response = urllib.request.urlopen(request)
         except urllib.error.URLError as e:
             if e.code == 404:
-                data_sharing_policy = "Publication Policy File is not Available."
+                publication_policy = "Publication Policy File is not Available."
             else:
                 #this is for a non-404 URLError.
-                data_sharing_policy = "Publication Policy File is not Available."
+                publication_policy = "Publication Policy File is not Available."
         except ValueError:
-            data_sharing_policy = "Publication Policy File is not Available."        
+            publication_policy = "Publication Policy File is not Available."
         else:
-             #successful connection
-             publication_policy = response.read()         
+            #successful connection
+            publication_policy = response.read()
         context['data_sharing_policy'] = publication_policy
         context['data_sharing_policy_source'] = settings.DATA_SHARING_FILE
         return context

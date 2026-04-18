@@ -7,12 +7,16 @@ Since this app has no models there is model and view tests:
 * :class:`~communication.tests.CommunicationViewTests` 
 
 """
+import urllib.error
+from unittest.mock import patch, Mock
+
 from django.urls import reverse
 
 from lab_website.tests import BasicTests
 
-from communication.models import LabAddress,LabLocation,Post
+from communication.models import LabAddress, LabLocation, Post
 from communication.sitemap import PostsSitemap
+from communication.views import generate_twitter_timeline
 
 from personnel.models import Address, Person
 from papers.models import Publication
@@ -371,3 +375,187 @@ class PostsSitemapTests(BasicTests):
         post = Post.objects.get(post_slug='fixture-post')
         post.modified = None
         self.assertEqual(sitemap.lastmod(post), post.created)
+
+
+class TwitterTimelineTests(BasicTests):
+    """Unit tests for generate_twitter_timeline covering all error/success branches."""
+
+    @patch('communication.views.requests.get')
+    def test_rate_limit_on_user_lookup(self, mock_get):
+        """Returns error dict when user lookup returns 429."""
+        resp = Mock(status_code=429)
+        mock_get.return_value = resp
+        result = generate_twitter_timeline(5)
+        self.assertIn('error', result)
+
+    @patch('communication.views.requests.get')
+    def test_user_id_not_found(self, mock_get):
+        """Returns error dict when API returns no user id."""
+        resp = Mock(status_code=200)
+        resp.raise_for_status = Mock()
+        resp.json.return_value = {'data': {}}
+        mock_get.return_value = resp
+        result = generate_twitter_timeline(5)
+        self.assertIn('error', result)
+
+    @patch('communication.views.requests.get')
+    def test_rate_limit_on_tweet_fetch(self, mock_get):
+        """Returns error dict when tweet fetch returns 429."""
+        user_resp = Mock(status_code=200)
+        user_resp.raise_for_status = Mock()
+        user_resp.json.return_value = {'data': {'id': '99'}}
+        tweet_resp = Mock(status_code=429)
+        mock_get.side_effect = [user_resp, tweet_resp]
+        result = generate_twitter_timeline(5)
+        self.assertIn('error', result)
+
+    @patch('communication.views.requests.get')
+    def test_request_exception(self, mock_get):
+        """Returns error dict on RequestException."""
+        from requests.exceptions import RequestException
+        mock_get.side_effect = RequestException("network error")
+        result = generate_twitter_timeline(5)
+        self.assertIn('error', result)
+
+    @patch('communication.views.requests.get')
+    def test_successful_timeline(self, mock_get):
+        """Returns tweet list on successful API calls."""
+        user_resp = Mock(status_code=200)
+        user_resp.raise_for_status = Mock()
+        user_resp.json.return_value = {'data': {'id': '99'}}
+        tweet_resp = Mock(status_code=200)
+        tweet_resp.raise_for_status = Mock()
+        tweet_resp.json.return_value = {'data': [{'text': 'hello'}]}
+        mock_get.side_effect = [user_resp, tweet_resp]
+        result = generate_twitter_timeline(5)
+        self.assertEqual(result, [{'text': 'hello'}])
+
+    @patch('communication.views.requests.get')
+    def test_twitter_view_success_path(self, mock_get):
+        """TwitterView sets timeline in context on successful API response."""
+        user_resp = Mock(status_code=200)
+        user_resp.raise_for_status = Mock()
+        user_resp.json.return_value = {'data': {'id': '99'}}
+        tweet_resp = Mock(status_code=200)
+        tweet_resp.raise_for_status = Mock()
+        tweet_resp.json.return_value = {'data': [{'text': 'test tweet'}]}
+        mock_get.side_effect = [user_resp, tweet_resp]
+        response = self.client.get('/twitter', follow=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['timeline'], [{'text': 'test tweet'}])
+        self.assertIsNone(response.context['twitter_error'])
+
+
+class LabRulesViewTests(BasicTests):
+    """Tests for LabRulesView covering all urlopen branches."""
+
+    @patch('urllib.request.urlopen')
+    def test_404_error(self, mock_urlopen):
+        """Sets lab_rules to error message on 404."""
+        mock_urlopen.side_effect = urllib.error.HTTPError('url', 404, 'Not Found', {}, None)
+        response = self.client.get('/lab-rules/', follow=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['lab_rules'], 'Lab Rules File is not Available.')
+
+    @patch('urllib.request.urlopen')
+    def test_non_404_url_error(self, mock_urlopen):
+        """Sets lab_rules to error message on non-404 URLError."""
+        mock_urlopen.side_effect = urllib.error.HTTPError('url', 500, 'Error', {}, None)
+        response = self.client.get('/lab-rules/', follow=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['lab_rules'], 'Lab Rules File is not Available.')
+
+    @patch('urllib.request.urlopen')
+    def test_value_error(self, mock_urlopen):
+        """Sets lab_rules to error message on ValueError."""
+        mock_urlopen.side_effect = ValueError("bad url")
+        response = self.client.get('/lab-rules/', follow=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['lab_rules'], 'Lab Rules File is not Available.')
+
+    @patch('urllib.request.urlopen')
+    def test_successful_response(self, mock_urlopen):
+        """Sets lab_rules to file content on success."""
+        mock_resp = Mock()
+        mock_resp.read.return_value = b'# Lab Rules Content'
+        mock_urlopen.return_value = mock_resp
+        response = self.client.get('/lab-rules/', follow=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['lab_rules'], b'# Lab Rules Content')
+
+
+class PublicationPolicyViewTests(BasicTests):
+    """Tests for PublicationPolicyView covering all urlopen branches."""
+
+    @patch('urllib.request.urlopen')
+    def test_404_error(self, mock_urlopen):
+        mock_urlopen.side_effect = urllib.error.HTTPError('url', 404, 'Not Found', {}, None)
+        response = self.client.get('/publication-policy/', follow=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['publication_policy'], 'Publication Policy File is not Available.')
+
+    @patch('urllib.request.urlopen')
+    def test_non_404_url_error(self, mock_urlopen):
+        mock_urlopen.side_effect = urllib.error.HTTPError('url', 500, 'Error', {}, None)
+        response = self.client.get('/publication-policy/', follow=True)
+        self.assertEqual(response.status_code, 200)
+
+    @patch('urllib.request.urlopen')
+    def test_value_error(self, mock_urlopen):
+        mock_urlopen.side_effect = ValueError("bad url")
+        response = self.client.get('/publication-policy/', follow=True)
+        self.assertEqual(response.status_code, 200)
+
+    @patch('urllib.request.urlopen')
+    def test_successful_response(self, mock_urlopen):
+        mock_resp = Mock()
+        mock_resp.read.return_value = b'# Publication Policy'
+        mock_urlopen.return_value = mock_resp
+        response = self.client.get('/publication-policy/', follow=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['publication_policy'], b'# Publication Policy')
+
+
+class DataResourceSharingViewTests(BasicTests):
+    """Tests for DataResourceSharingPolicyView covering all urlopen branches."""
+
+    @patch('urllib.request.urlopen')
+    def test_404_error(self, mock_urlopen):
+        mock_urlopen.side_effect = urllib.error.HTTPError('url', 404, 'Not Found', {}, None)
+        response = self.client.get('/data-resource-sharing/', follow=True)
+        self.assertEqual(response.status_code, 200)
+
+    @patch('urllib.request.urlopen')
+    def test_non_404_url_error(self, mock_urlopen):
+        mock_urlopen.side_effect = urllib.error.HTTPError('url', 500, 'Error', {}, None)
+        response = self.client.get('/data-resource-sharing/', follow=True)
+        self.assertEqual(response.status_code, 200)
+
+    @patch('urllib.request.urlopen')
+    def test_value_error(self, mock_urlopen):
+        mock_urlopen.side_effect = ValueError("bad url")
+        response = self.client.get('/data-resource-sharing/', follow=True)
+        self.assertEqual(response.status_code, 200)
+
+
+class PostDetailErrorTests(BasicTests):
+    """Tests for PostDetail markdown fetch error handling."""
+
+    fixtures = ['test_post', 'test_publication', 'test_publication_personnel', 'test_project', 'test_personnel']
+
+    @patch('urllib.request.urlopen')
+    def test_url_error_fallback(self, mock_urlopen):
+        """PostDetail sets post_data to unavailable message on URLError."""
+        mock_urlopen.side_effect = urllib.error.URLError("connection refused")
+        response = self.client.get('/posts/fixture-post', follow=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['post_data'], 'Post is not Available.')
+        self.assertFalse(response.context['has_citations'])
+
+    @patch('urllib.request.urlopen')
+    def test_value_error_fallback(self, mock_urlopen):
+        """PostDetail sets post_data to unavailable message on ValueError."""
+        mock_urlopen.side_effect = ValueError("bad url")
+        response = self.client.get('/posts/fixture-post', follow=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['post_data'], 'Post is not Available.')

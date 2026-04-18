@@ -40,17 +40,16 @@ class IndexView(TemplateView):
                 response = urllib.request.urlopen(request)
             except urllib.error.URLError as e:
                 if e.code == 404:
-                    data = "Facebook API is not Available."
+                    return "Facebook API is not Available."
                 else:
                     #this is for a non-404 URLError.
-                    data = "Facebook API is not Available."
+                    return "Facebook API is not Available."
             except ValueError:
-                data = "Facebook API is not Available."        
-            else:
-                #successful connection
-                json_data = response.read()
-                data = json.loads(json_data)
-                return data
+                return "Facebook API is not Available."
+            #successful connection
+            json_data = response.read()
+            data = json.loads(json_data)
+            return data
         
         def urlify_text(text):
             '''Convert URLs in text to clickable links.'''

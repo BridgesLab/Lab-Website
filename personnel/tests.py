@@ -8,8 +8,10 @@ Replace this with more appropriate tests for your application.
 from datetime import date
 
 from personnel.models import Person, JobPosting, Organization, Role, JobType, Degree
+from personnel.admin import CurrentLabMemberAdmin, CurrentLabMember
 from lab_website.tests import BasicTests
 from personnel.sitemap import LabPersonnelSitemap
+from django.test import RequestFactory
 
 MODELS = [Person, JobPosting]
 
@@ -313,3 +315,55 @@ class PersonnelSitemapTests(BasicTests):
         person = Person.objects.filter(current_lab_member=True).first()
         if person:
             self.assertEqual(sitemap.lastmod(person), person.updated)
+
+
+class CurrentLabMemberAdminTests(BasicTests):
+    """Tests for CurrentLabMemberAdmin custom methods."""
+
+    fixtures = ['test_personnel.json', 'test_roles.json']
+
+    def setUp(self):
+        super().setUp()
+        self.admin = CurrentLabMemberAdmin(CurrentLabMember, None)
+        self.job_type = JobType.objects.create(
+            job_title="Research Assistant",
+            trainee_status=True,
+            student_status=True,
+            employee_status=False,
+        )
+        self.organization = Organization.objects.create(name="Test University")
+
+    def test_get_queryset_only_current_members(self):
+        """get_queryset returns only current lab members."""
+        request = RequestFactory().get('/')
+        qs = self.admin.get_queryset(request)
+        self.assertTrue(all(p.current_lab_member for p in qs))
+
+    def test_get_queryset_excludes_alumni(self):
+        """get_queryset excludes people where current_lab_member=False."""
+        alumni = Person.objects.create(
+            first_name="Former", last_name="Member",
+            current_lab_member=False, alumni=True,
+        )
+        request = RequestFactory().get('/')
+        qs = self.admin.get_queryset(request)
+        self.assertNotIn(alumni, qs)
+
+    def test_lab_roles_display_with_roles(self):
+        """lab_roles_display returns comma-separated role strings."""
+        person = Person.objects.get(first_name="John", last_name="Doe")
+        role = Role.objects.create(
+            job_type=self.job_type,
+            organization=self.organization,
+            public=True,
+        )
+        person.lab_roles.add(role)
+        result = self.admin.lab_roles_display(person)
+        self.assertIn(str(role), result)
+
+    def test_lab_roles_display_no_roles(self):
+        """lab_roles_display returns 'None' when person has no lab roles."""
+        person = Person.objects.get(first_name="John", last_name="Doe")
+        person.lab_roles.clear()
+        result = self.admin.lab_roles_display(person)
+        self.assertEqual(result, "None")
