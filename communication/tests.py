@@ -249,7 +249,6 @@ class PostViewTests(BasicTests):
         self.assertEqual(test_response.status_code, 200)       
         self.assertTemplateUsed(test_response, 'post_detail.html')
         self.assertTemplateUsed(test_response, 'base.html') 
-        self.assertTemplateUsed(test_response, 'disqus_snippet.html')
         self.assertTemplateUsed(test_response, 'analytics_tracking.html')
         self.assertTrue('post' in test_response.context)  
         

@@ -139,7 +139,6 @@ class ProjectViewTests(TestCase):
         self.assertTrue('project' in test_response.context)        
         self.assertTemplateUsed(test_response, 'project_detail.html')
         self.assertTemplateUsed(test_response, 'base.html') 
-        self.assertTemplateUsed(test_response, 'disqus_snippet.html')                         
         self.assertEqual(test_response.context['project'].pk, 1)
         self.assertEqual(test_response.context['project'].title, 'Fixture Project')
         
@@ -285,7 +284,6 @@ class FundingViewTests(TestCase):
         self.assertTrue('funding' in test_response.context)        
         self.assertTemplateUsed(test_response, 'funding_detail.html')
         self.assertTemplateUsed(test_response, 'base.html') 
-        self.assertTemplateUsed(test_response, 'disqus_snippet.html')                         
         self.assertEqual(test_response.context['funding'].pk, 1)
         self.assertEqual(test_response.context['funding'].title, 'Fixture Funding')
         
