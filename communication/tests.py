@@ -308,6 +308,17 @@ class PostsFeedTests(BasicTests):
 
     fixtures = ['test_post', 'test_publication', 'test_publication_personnel', 'test_project', 'test_personnel']
 
+    def setUp(self):
+        super().setUp()
+        from datetime import date
+        author = Person.objects.get(pk=1)
+        self.modified_post = Post.objects.create(
+            post_title='Modified Post',
+            author=author,
+            markdown_url='http://example.com/post.md',
+            modified=date.today(),
+        )
+
     def test_posts_feed_returns_200(self):
         """Posts feed URL returns a valid RSS response."""
         response = self.client.get('/feeds/posts/')
@@ -329,6 +340,12 @@ class PostsFeedTests(BasicTests):
         post = Post.objects.get(post_slug='fixture-post')
         self.assertContains(response, str(post.author))
 
+    def test_posts_feed_item_updateddate_when_modified_set(self):
+        """Posts feed renders correctly when a post has a modified date."""
+        response = self.client.get('/feeds/posts/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Modified Post')
+
 
 class PostsSitemapTests(BasicTests):
     """Tests for the PostsSitemap."""
@@ -340,14 +357,13 @@ class PostsSitemapTests(BasicTests):
         sitemap = PostsSitemap()
         self.assertEqual(list(sitemap.items()), list(Post.objects.all()))
 
-    def test_sitemap_lastmod_uses_modified_when_set(self):
-        """PostsSitemap.lastmod() returns modified date when present."""
+    def test_sitemap_lastmod_returns_modified_when_set(self):
+        """PostsSitemap.lastmod() returns modified when it is not None."""
+        from datetime import date
         post = Post.objects.get(post_slug='fixture-post')
+        post.modified = date.today()
         sitemap = PostsSitemap()
-        if post.modified:
-            self.assertEqual(sitemap.lastmod(post), post.modified)
-        else:
-            self.assertEqual(sitemap.lastmod(post), post.created)
+        self.assertEqual(sitemap.lastmod(post), post.modified)
 
     def test_sitemap_lastmod_falls_back_to_created(self):
         """PostsSitemap.lastmod() falls back to created when modified is None."""

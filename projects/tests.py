@@ -46,6 +46,18 @@ class ProjectModelTests(TestCase):
             for obj in model.objects.all():
                 obj.delete()
                 
+    def test_summary_intro_with_multiline(self):
+        """summary_intro splits summary on newlines."""
+        project = Project(title='Summary Project', summary='Line one\nLine two\nLine three')
+        project.save()
+        self.assertEqual(project.summary_intro, ['Line one', 'Line two', 'Line three'])
+
+    def test_summary_intro_empty(self):
+        """summary_intro returns empty list when summary is not set."""
+        project = Project(title='No Summary Project')
+        project.save()
+        self.assertEqual(project.summary_intro, [])
+
     def test_create_new_project_minimum(self):
         '''This test creates a :class:`~projects.models.Project` with the required information only.'''
         test_project = Project(title='Test Project.')
@@ -229,7 +241,12 @@ class FundingModelTests(TestCase):
         '''This test creates a :class:`~projects.models.FundingAgency` with the required information only.'''
         test_funding_agency = FundingAgency(name='Test Agency')
         test_funding_agency.save()
-        self.assertEqual(test_funding_agency.pk, 2)    
+        self.assertEqual(test_funding_agency.pk, 2)
+
+    def test_funding_agency_string(self):
+        """FundingAgency __str__ returns its name."""
+        agency = FundingAgency.objects.get(pk=1)
+        self.assertEqual(str(agency), agency.name)
         
     def test_create_new_funding_all(self):
         '''This test creates a `:class:~projects.models.Funding` with the required information only.'''

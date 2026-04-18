@@ -7,7 +7,7 @@ Replace this with more appropriate tests for your application.
 
 from datetime import date
 
-from personnel.models import Person, JobPosting, Organization, Role, JobType
+from personnel.models import Person, JobPosting, Organization, Role, JobType, Degree
 from lab_website.tests import BasicTests
 from personnel.sitemap import LabPersonnelSitemap
 
@@ -217,6 +217,75 @@ class JobPostingModelTests(BasicTests):
                               active=True)
         test_jobposting.save()
         self.assertEqual(str(test_jobposting), 'Postdoctoral Researcher Job Posting (%s)' %(date.today()) )
+
+    def test_jobposting_expiry_default(self):
+        """expiry() defaults to 30 days when duration is None."""
+        import datetime
+        org = Organization.objects.get(pk=1)
+        posting = JobPosting(title='Test', description='desc', link='http://example.com',
+                             hiringOrganization=org, active=True)
+        posting.save()
+        self.assertEqual(posting.expiry(), posting.created + datetime.timedelta(30))
+
+    def test_jobposting_expiry_with_duration(self):
+        """expiry() uses duration when set."""
+        import datetime
+        org = Organization.objects.get(pk=1)
+        posting = JobPosting(title='Test2', description='desc', link='http://example.com',
+                             hiringOrganization=org, active=True, duration=60)
+        posting.save()
+        self.assertEqual(posting.expiry(), posting.created + datetime.timedelta(60))
+
+    def test_jobposting_base_salary_term_upper_none(self):
+        """base_salary_term_upper() returns None when base_salary_term is not set."""
+        org = Organization.objects.get(pk=1)
+        posting = JobPosting(title='Test3', description='desc', link='http://example.com',
+                             hiringOrganization=org, active=True)
+        posting.save()
+        self.assertIsNone(posting.base_salary_term_upper())
+
+    def test_jobposting_base_salary_term_upper(self):
+        """base_salary_term_upper() returns the uppercased salary term."""
+        org = Organization.objects.get(pk=1)
+        posting = JobPosting(title='Test4', description='desc', link='http://example.com',
+                             hiringOrganization=org, active=True, base_salary_term='yearly')
+        posting.save()
+        self.assertEqual(posting.base_salary_term_upper(), 'YEARLY')
+
+
+class DegreeModelTests(BasicTests):
+    """Tests for the Degree model."""
+
+    fixtures = ['test_organization']
+
+    def test_degree_string(self):
+        """Degree __str__ returns abbreviation and organization."""
+        org = Organization.objects.get(pk=1)
+        degree = Degree(degree='Doctor of Philosophy', field_of_study='Biochemistry',
+                        abbreviation='Ph.D.', organization=org)
+        degree.save()
+        self.assertEqual(str(degree), 'Ph.D. (%s)' % str(org))
+
+
+class AlumniViewTests(BasicTests):
+    """Tests for the LaboratoryAlumniList view."""
+
+    fixtures = ['test_personnel', 'test_address', 'test_labaddress']
+
+    def test_alumni_view_returns_200(self):
+        """Alumni list view returns 200."""
+        response = self.client.get('/people/alumni/', follow=True)
+        self.assertEqual(response.status_code, 200)
+
+    def test_alumni_view_uses_correct_template(self):
+        """Alumni list view uses the personnel-list template."""
+        response = self.client.get('/people/alumni/', follow=True)
+        self.assertTemplateUsed(response, 'personnel_list.html')
+
+    def test_alumni_view_context_personnel_type(self):
+        """Alumni list view sets personnel_type to 'alumni' in context."""
+        response = self.client.get('/people/alumni/', follow=True)
+        self.assertEqual(response.context['personnel_type'], 'alumni')
 
 
 class PersonnelSitemapTests(BasicTests):
