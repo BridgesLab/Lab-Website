@@ -85,6 +85,7 @@ TEMPLATES = [
             'context_processors': [
                 "communication.context_processors.social_media_accounts",
 				"papers.context_processors.api_keys",
+                "lab_website.context_processors.lab_metadata",
 				"django.contrib.auth.context_processors.auth",
 				"django.template.context_processors.debug",
 				"django.template.context_processors.i18n",

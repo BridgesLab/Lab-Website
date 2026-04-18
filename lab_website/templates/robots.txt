@@ -1,9 +1,22 @@
-#To block Bytespider  from crawling:
+User-agent: GPTBot
+Crawl-delay: 10
+
+User-agent: CCBot
+Crawl-delay: 10
+
+User-agent: anthropic-ai
+Crawl-delay: 10
+
+User-agent: Claude-Web
+Crawl-delay: 10
+
+#To block Bytespider from crawling:
 User-agent: Bytespider
 Disallow: /
 
-#To block Bytedance  from crawling:
+#To block Bytedance from crawling:
 User-agent: Bytedance
 Disallow: /
 
 Sitemap: http://bridgeslab.sph.umich.edu/sitemap.xml
+Sitemap: http://bridgeslab.sph.umich.edu/protocols/sitemap-index-bridgeslabproto-mw_.xml

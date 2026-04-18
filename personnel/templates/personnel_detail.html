@@ -1,5 +1,38 @@
 {% extends "base.html" %}
 
+{% block scripts %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Person",
+  "name": "{{ person|escapejs }}",
+  "givenName": "{{ person.first_name|escapejs }}",
+  "familyName": "{{ person.last_name|escapejs }}",
+  {% if person.email %}"email": "{{ person.email }}",{% endif %}
+  {% if person.phone %}"telephone": "{{ person.phone }}",{% endif %}
+  {% if person.image %}"image": "{{ request.scheme }}://{{ request.get_host }}{{ person.image.url }}",{% endif %}
+  "url": "{{ request.build_absolute_uri }}",
+  "sameAs": [
+    {% if person.orcid_id %}"http://orcid.org/{{ person.orcid_id }}"{% endif %}
+    {% if person.twitter_username %}{% if person.orcid_id %},{% endif %}"https://twitter.com/{{ person.twitter_username }}"{% endif %}
+  ],
+  "jobTitle": "{% for role in person.lab_roles.all %}{% if not role.end_date %}{{ role|striptags|escapejs }}{% endif %}{% endfor %}",
+  "worksFor": {
+    "@type": "EducationalOrganization",
+    "name": "{{ lab_name }}"
+  },
+  "alumniOf": [
+    {% for degree in person.degrees.all %}
+    {
+      "@type": "EducationalOrganization",
+      "name": "{{ degree.organization.name|escapejs }}"
+    }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  ]
+}
+</script>
+{% endblock %}
+
 {% block title %}<title>{{ person }}</title>{% endblock %}
 
 {% block header %}
@@ -7,13 +40,8 @@
 {% endblock %}
 
 {% block content %}
-<article itemscope itemtype="http://schema.org/Person" class="container">
+<article class="container"> {# Removed Microdata attributes and meta tags #}
 
-  <meta itemprop="familyName" content="{{ person.last_name }}" />
-  <meta itemprop="givenName" content="{{ person.first_name }}" />
-  <meta itemprop="name" content="{{ person }}" />
-
-  <!-- Top row: Details + Image -->
   <section id="bio" class="row">
     <div class="col-md-8 mb-3">
       <div class="card h-100">
@@ -47,9 +75,6 @@
               <dd class="col-sm-8">
                 {% for degree in person.degrees.all %}
                   {{ degree }}{% if degree.date_awarded %}, awarded {{ degree.date_awarded|date:"Y" }}{% endif %}<br />
-                  <meta itemprop="alumniOf" itemscope itemtype="http://schema.org/EducationalOrganization">
-                    <meta itemprop="name" content="{{ degree.organization.name }}">
-                  </meta>
                 {% endfor %}
               </dd>
             {% endif %}
@@ -57,19 +82,19 @@
             {% if person.email %}
               <dt class="col-sm-4">Email</dt>
               <dd class="col-sm-8">
-                <a itemprop="email" href="mailto:{{ person.email }}">{{ person.email }}</a>
+                <a href="mailto:{{ person.email }}">{{ person.email }}</a>
               </dd>
             {% endif %}
 
             {% if person.phone %}
               <dt class="col-sm-4">Phone</dt>
-              <dd class="col-sm-8"><span itemprop="telephone">{{ person.phone }}</span></dd>
+              <dd class="col-sm-8"><span>{{ person.phone }}</span></dd>
             {% endif %}
 
             {% if person.orcid_id %}
               <dt class="col-sm-4">ORCID ID</dt>
               <dd class="col-sm-8">
-                <a itemprop="sameAs" href="http://orcid.org/{{ person.orcid_id }}">{{ person.orcid_id }}</a>
+                <a href="http://orcid.org/{{ person.orcid_id }}" target="_blank">{{ person.orcid_id }}</a>
               </dd>
             {% endif %}
 
@@ -80,8 +105,8 @@
                    data-show-count="true" data-lang="en" data-size="large">
                   Follow @{{ person.twitter_username }}
                 </a>
+                <script async src="//platform.twitter.com/widgets.js" charset="utf-8"></script>
               </dd>
-              <script async src="//platform.twitter.com/widgets.js" charset="utf-8"></script>
             {% endif %}
           </dl>
         </div>
@@ -101,12 +126,8 @@
   <section class="row mb-4">
     <div class="col-12">
       <div class="card">
-        <div class="card-header">
-          <h2 class="h5">Bio</h2>
-        </div>
-        <div class="card-body">
-          <p>{{ person.biography }}</p>
-        </div>
+        <div class="card-header"><h2 class="h5">Bio</h2></div>
+        <div class="card-body"><p>{{ person.biography }}</p></div>
       </div>
     </div>
   </section>
@@ -116,11 +137,9 @@
   <section id="papers" class="row">
     <div class="col-12">
       <div class="card">
-        <div class="card-header">
-          <h2 class="h5">Publications</h2>
-        </div>
+        <div class="card-header"><h2 class="h5">Publications</h2></div>
         <div class="card-body">
-          <ol>
+          <ol class="list-unstyled">
             {% for detail in person.authordetails_set.all %}
               {% for paper in detail.publication_set.all|dictsort:"year" %}
                   {% include "paper-detail-snippet.html" %}

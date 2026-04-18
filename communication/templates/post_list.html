@@ -1,7 +1,31 @@
 {% extends "base.html" %}
+
 {% block scripts %}
 <link rel="alternate" type="application/rss+xml" title="Posts" href="{% url 'posts-feed' %}">
+
+{# JSON-LD for Blog List #}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {% for post in post_list %}
+    {
+      "@type": "BlogPosting",
+      "headline": "{{ post.post_title|escapejs }}",
+      "url": "{{ request.scheme }}://{{ request.get_host }}{{ post.get_absolute_url }}",
+      "datePublished": "{{ post.created|date:'c' }}",
+      "author": {
+        "@type": "Person",
+        "name": "{{ post.author|escapejs }}",
+        "url": "{{ request.scheme }}://{{ request.get_host }}{{ post.author.get_absolute_url }}"
+      }
+    }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  ]
+}
+</script>
 {% endblock %}
+
 {% block title %}<title>Bridges Lab Posts</title>{% endblock %}
 
 {% block header %}
@@ -9,27 +33,35 @@
 {% endblock %}
 
 {% block content %}
-
 <h2 class="text-center display-6">Blog Posts</h2>
-<article id='blog' class="container-fluid">
-<ol>
+<article id='blog' class="container-fluid mb-5">
+<ol class="list-group list-group-flush">
 {% for post in post_list %}
-<li itemprop="relatedLink border-bottom" itemscope itemtype="http://schema.org/BlogPosting" ><a href="{{ post.get_absolute_url }}" itemprop="url">{{ post.post_title }}</a> by  <a href="{{ post.author.get_absolute_url }}" class="text-decoration-none text-dark" itemprop="author">{{post.author}}</a> on <time itemprop="dateCreated"  datetime="{{ post.created | date:'c'}}">{{ post.created }}</time>.
-</li>
+    <li class="list-group-item d-flex justify-content-between align-items-start border-bottom py-3">
+        <div class="ms-2 me-auto">
+            <div class="fw-bold">
+                <a href="{{ post.get_absolute_url }}" class="text-decoration-none">{{ post.post_title }}</a>
+            </div>
+            <span class="text-muted small">
+                By <a href="{{ post.author.get_absolute_url }}" class="text-decoration-none text-dark">{{ post.author }}</a> 
+                on {{ post.created|date:"F j, Y" }}
+            </span>
+        </div>
+    </li>
 {% endfor %}
 </ol>
 </article>
 
 <h2 class="text-center display-6">Journal Club Summaries</h2>
-<article id='blog' class="container-fluid">
+<article id='journal-club' class="container-fluid">
 {% for commentary in commentaries %}
-<section>
-{% with commentary.paper as paper %}
-<ol class="list-unstyled">
-    {% include "paper-detail-snippet.html" %}
-</ol>
-{% endwith %}
-</section>
+    <section class="mb-4">
+    {% with commentary.paper as paper %}
+        <ol class="list-unstyled">
+            {% include "paper-detail-snippet.html" %}
+        </ol>
+    {% endwith %}
+    </section>
 {% endfor %}
 </article>
 {% endblock %}

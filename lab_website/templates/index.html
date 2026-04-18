@@ -3,12 +3,46 @@
 {% block title %}
 <title>{{ lab_name }} Homepage</title>
 <meta name="description" content="{{ general_data.about }}">
+<meta name="google-site-verification" content="_z1xczFl8ku1ngZR-pq9vQOHb-4fzIBOT4EFLsTYvrE" />
 {% endblock title %}
 
-{% block content %}
-<article itemscope itemtype="http://schema.org/Organization">
+{% block scripts %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "name": "{{ lab_name }}",
+      "url": "{{ request.scheme }}://{{ request.get_host }}",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "{{ request.scheme }}://{{ request.get_host }}/search?q={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+    {% if postings %},
+    {% for job in postings %}
+    {
+      "@type": "JobPosting",
+      "title": "{{ job.title }}",
+      "description": "{{ job.description|striptags }}",
+      "hiringOrganization": {
+        "@type": "Organization",
+        "name": "{{ lab_name }}"
+      }
+    }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+    {% endif %}
+  ]
+}
+</script>
+{% endblock %}
 
-<h1 class='text-center display-4'>Welcome to the <span itemprop="name">{{ lab_name }}</span></h1>
+{% block content %}
+<article> 
+
+<h1 class='text-center display-4'>Welcome to the {{ lab_name }}</h1> {# Removed itemprop #}
 
 <div class="container">
   <div class="row">
