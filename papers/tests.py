@@ -30,6 +30,7 @@ from rest_framework import status
 from papers.models import Publication, AuthorDetails, Person, Commentary
 from papers.serializers import PublicationSerializer, PublicationListSerializer
 from papers.filters import PublicationFilter
+from papers.sitemap import LabPublicationsSitemap, CommentarySitemap
 
 MODELS = [Publication, AuthorDetails, Commentary]
 
@@ -703,6 +704,100 @@ class PublicationFilterTest(TestCase):
         """Test filtering by journal name."""
         filter_set = PublicationFilter(data={'journal': 'Nature'})
         queryset = filter_set.qs
-        
+
         self.assertEqual(queryset.count(), 1)
-        self.assertEqual(queryset.first().journal, 'Nature')                     
+        self.assertEqual(queryset.first().journal, 'Nature')
+
+
+class PapersFeedTests(TestCase):
+    """Tests for papers RSS feeds."""
+
+    fixtures = ['test_publication', 'test_publication_personnel', 'test_commentary']
+
+    def setUp(self):
+        self.client = Client()
+
+    def test_lab_papers_feed_returns_200(self):
+        """Lab papers feed returns a valid RSS response."""
+        response = self.client.get('/feeds/lab-papers/')
+        self.assertEqual(response.status_code, 200)
+
+    def test_lab_papers_feed_is_xml(self):
+        """Lab papers feed is RSS/XML."""
+        response = self.client.get('/feeds/lab-papers/')
+        self.assertIn('xml', response['Content-Type'])
+
+    def test_lab_papers_feed_contains_lab_paper(self):
+        """Lab papers feed contains only laboratory papers."""
+        response = self.client.get('/feeds/lab-papers/')
+        lab_paper = Publication.objects.filter(laboratory_paper=True).first()
+        if lab_paper:
+            self.assertContains(response, lab_paper.title)
+
+    def test_interesting_papers_feed_returns_200(self):
+        """Interesting papers feed returns a valid RSS response."""
+        response = self.client.get('/feeds/interesting-papers/')
+        self.assertEqual(response.status_code, 200)
+
+    def test_interesting_papers_feed_is_xml(self):
+        """Interesting papers feed is RSS/XML."""
+        response = self.client.get('/feeds/interesting-papers/')
+        self.assertIn('xml', response['Content-Type'])
+
+    def test_commentary_feed_returns_200(self):
+        """Commentary feed returns a valid RSS response."""
+        response = self.client.get('/feeds/commentaries/')
+        self.assertEqual(response.status_code, 200)
+
+    def test_commentary_feed_is_xml(self):
+        """Commentary feed is RSS/XML."""
+        response = self.client.get('/feeds/commentaries/')
+        self.assertIn('xml', response['Content-Type'])
+
+    def test_commentary_feed_contains_commentary(self):
+        """Commentary feed contains fixture commentary content."""
+        response = self.client.get('/feeds/commentaries/')
+        commentary = Commentary.objects.first()
+        if commentary:
+            self.assertContains(response, commentary.comments)
+
+    def test_journal_club_feed_returns_200(self):
+        """Journal club feed returns a valid RSS response."""
+        response = self.client.get('/feeds/journal-club/')
+        self.assertEqual(response.status_code, 200)
+
+    def test_journal_club_feed_is_xml(self):
+        """Journal club feed is RSS/XML."""
+        response = self.client.get('/feeds/journal-club/')
+        self.assertIn('xml', response['Content-Type'])
+
+
+class PapersSitemapTests(TestCase):
+    """Tests for papers sitemaps."""
+
+    fixtures = ['test_publication', 'test_publication_personnel', 'test_commentary']
+
+    def test_lab_publications_sitemap_items_are_lab_papers(self):
+        """LabPublicationsSitemap.items() returns only laboratory papers."""
+        sitemap = LabPublicationsSitemap()
+        items = list(sitemap.items())
+        self.assertTrue(all(p.laboratory_paper for p in items))
+
+    def test_lab_publications_sitemap_lastmod(self):
+        """LabPublicationsSitemap.lastmod() returns date_last_modified."""
+        sitemap = LabPublicationsSitemap()
+        paper = Publication.objects.filter(laboratory_paper=True).first()
+        if paper:
+            self.assertEqual(sitemap.lastmod(paper), paper.date_last_modified)
+
+    def test_commentary_sitemap_items_returns_all_commentaries(self):
+        """CommentarySitemap.items() returns all Commentary objects."""
+        sitemap = CommentarySitemap()
+        self.assertEqual(list(sitemap.items()), list(Commentary.objects.all()))
+
+    def test_commentary_sitemap_lastmod(self):
+        """CommentarySitemap.lastmod() returns the modified date."""
+        sitemap = CommentarySitemap()
+        commentary = Commentary.objects.first()
+        if commentary:
+            self.assertEqual(sitemap.lastmod(commentary), commentary.modified)

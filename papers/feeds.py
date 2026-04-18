@@ -86,12 +86,12 @@ class CommentaryFeed(Feed):
         return Commentary.objects.all()
 
     def item_title(self, item):
-        '''The title of each item will be "Commentary on XXX" or the unicode representation''' 
-        return item.__unicode__()
+        '''The title of each item will be "Commentary on XXX" or the unicode representation'''
+        return str(item)
 
     def item_description(self,item):
         '''The content of the feed is the actual comments.'''
-        return item.comments + item.citation
+        return (item.comments or '') + (item.citation or '')
 
     def item_author_name(self, item):
         '''The author of the item.'''

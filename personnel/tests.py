@@ -9,6 +9,7 @@ from datetime import date
 
 from personnel.models import Person, JobPosting, Organization, Role, JobType
 from lab_website.tests import BasicTests
+from personnel.sitemap import LabPersonnelSitemap
 
 MODELS = [Person, JobPosting]
 
@@ -216,3 +217,30 @@ class JobPostingModelTests(BasicTests):
                               active=True)
         test_jobposting.save()
         self.assertEqual(str(test_jobposting), 'Postdoctoral Researcher Job Posting (%s)' %(date.today()) )
+
+
+class PersonnelSitemapTests(BasicTests):
+    """Tests for the LabPersonnelSitemap."""
+
+    fixtures = ['test_personnel']
+
+    def test_sitemap_items_only_current_members(self):
+        """LabPersonnelSitemap.items() returns only current lab members."""
+        sitemap = LabPersonnelSitemap()
+        items = list(sitemap.items())
+        self.assertTrue(all(p.current_lab_member for p in items))
+
+    def test_sitemap_items_excludes_former_members(self):
+        """LabPersonnelSitemap.items() excludes non-current members."""
+        sitemap = LabPersonnelSitemap()
+        all_people = Person.objects.count()
+        sitemap_count = sitemap.items().count()
+        current_count = Person.objects.filter(current_lab_member=True).count()
+        self.assertEqual(sitemap_count, current_count)
+
+    def test_sitemap_lastmod_returns_updated(self):
+        """LabPersonnelSitemap.lastmod() returns person.updated."""
+        sitemap = LabPersonnelSitemap()
+        person = Person.objects.filter(current_lab_member=True).first()
+        if person:
+            self.assertEqual(sitemap.lastmod(person), person.updated)

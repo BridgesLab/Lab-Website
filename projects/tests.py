@@ -20,6 +20,7 @@ from django.test.client import Client
 from django.contrib.auth.models import User
 
 from projects.models import Project, Funding, FundingAgency
+from projects.sitemap import ProjectsSitemap, FundingSitemap
 
 MODELS = [Project, Funding]
 
@@ -339,4 +340,60 @@ class FundingViewTests(TestCase):
 
         #verifies that a non-existent object returns a 404 error.
         null_response = self.client.get('/funding/not-a-real-funding/delete/',follow=True)
-        self.assertEqual(null_response.status_code, 404)                   
+        self.assertEqual(null_response.status_code, 404)
+
+
+class ProjectsFeedTests(TestCase):
+    """Tests for the ProjectsFeed RSS feed."""
+
+    fixtures = ['test_project']
+
+    def setUp(self):
+        self.client = Client()
+
+    def test_projects_feed_returns_200(self):
+        """Projects feed URL returns a valid RSS response."""
+        response = self.client.get('/feeds/projects/')
+        self.assertEqual(response.status_code, 200)
+
+    def test_projects_feed_is_xml(self):
+        """Projects feed response is RSS/XML."""
+        response = self.client.get('/feeds/projects/')
+        self.assertIn('xml', response['Content-Type'])
+
+    def test_projects_feed_contains_fixture_project(self):
+        """Projects feed contains the fixture project title."""
+        response = self.client.get('/feeds/projects/')
+        project = Project.objects.first()
+        if project:
+            self.assertContains(response, project.title)
+
+
+class ProjectsSitemapTests(TestCase):
+    """Tests for projects sitemaps."""
+
+    fixtures = ['test_project', 'test_funding', 'test_funding_agency']
+
+    def test_projects_sitemap_items_returns_all_projects(self):
+        """ProjectsSitemap.items() returns all Project objects."""
+        sitemap = ProjectsSitemap()
+        self.assertEqual(list(sitemap.items()), list(Project.objects.all()))
+
+    def test_projects_sitemap_lastmod(self):
+        """ProjectsSitemap.lastmod() returns date_last_modified."""
+        sitemap = ProjectsSitemap()
+        project = Project.objects.first()
+        if project:
+            self.assertEqual(sitemap.lastmod(project), project.date_last_modified)
+
+    def test_funding_sitemap_items_returns_all_funding(self):
+        """FundingSitemap.items() returns all Funding objects."""
+        sitemap = FundingSitemap()
+        self.assertEqual(list(sitemap.items()), list(Funding.objects.all()))
+
+    def test_funding_sitemap_lastmod(self):
+        """FundingSitemap.lastmod() returns date_last_modified."""
+        sitemap = FundingSitemap()
+        funding = Funding.objects.first()
+        if funding:
+            self.assertEqual(sitemap.lastmod(funding), funding.date_last_modified)

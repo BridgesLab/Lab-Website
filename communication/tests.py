@@ -12,6 +12,7 @@ from django.urls import reverse
 from lab_website.tests import BasicTests
 
 from communication.models import LabAddress,LabLocation,Post
+from communication.sitemap import PostsSitemap
 
 from personnel.models import Address, Person
 from papers.models import Publication
@@ -298,5 +299,59 @@ class PostViewTests(BasicTests):
         self.assertTemplateUsed(test_response, 'confirm_delete.html')
         self.assertTemplateUsed(test_response, 'base.html')                                                          
 
-        test_response = self.client.get('/posts/not-a-fixture-post/delete', follow=True) 
-        self.assertEqual(test_response.status_code, 404)  
+        test_response = self.client.get('/posts/not-a-fixture-post/delete', follow=True)
+        self.assertEqual(test_response.status_code, 404)
+
+
+class PostsFeedTests(BasicTests):
+    """Tests for the PostsFeed RSS feed."""
+
+    fixtures = ['test_post', 'test_publication', 'test_publication_personnel', 'test_project', 'test_personnel']
+
+    def test_posts_feed_returns_200(self):
+        """Posts feed URL returns a valid RSS response."""
+        response = self.client.get('/feeds/posts/')
+        self.assertEqual(response.status_code, 200)
+
+    def test_posts_feed_is_xml(self):
+        """Posts feed response is RSS/XML."""
+        response = self.client.get('/feeds/posts/')
+        self.assertIn('xml', response['Content-Type'])
+
+    def test_posts_feed_contains_fixture_post(self):
+        """Posts feed contains the fixture post title."""
+        response = self.client.get('/feeds/posts/')
+        self.assertContains(response, 'Fixture Post')
+
+    def test_posts_feed_contains_author(self):
+        """Posts feed contains the post author."""
+        response = self.client.get('/feeds/posts/')
+        post = Post.objects.get(post_slug='fixture-post')
+        self.assertContains(response, str(post.author))
+
+
+class PostsSitemapTests(BasicTests):
+    """Tests for the PostsSitemap."""
+
+    fixtures = ['test_post', 'test_publication', 'test_publication_personnel', 'test_project', 'test_personnel']
+
+    def test_sitemap_items_returns_all_posts(self):
+        """PostsSitemap.items() returns all Post objects."""
+        sitemap = PostsSitemap()
+        self.assertEqual(list(sitemap.items()), list(Post.objects.all()))
+
+    def test_sitemap_lastmod_uses_modified_when_set(self):
+        """PostsSitemap.lastmod() returns modified date when present."""
+        post = Post.objects.get(post_slug='fixture-post')
+        sitemap = PostsSitemap()
+        if post.modified:
+            self.assertEqual(sitemap.lastmod(post), post.modified)
+        else:
+            self.assertEqual(sitemap.lastmod(post), post.created)
+
+    def test_sitemap_lastmod_falls_back_to_created(self):
+        """PostsSitemap.lastmod() falls back to created when modified is None."""
+        sitemap = PostsSitemap()
+        post = Post.objects.get(post_slug='fixture-post')
+        post.modified = None
+        self.assertEqual(sitemap.lastmod(post), post.created)
