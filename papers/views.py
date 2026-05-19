@@ -18,7 +18,7 @@ from rest_framework.response import Response
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django_filters.rest_framework import DjangoFilterBackend
 
-from .serializers import PublicationSerializer, PublicationListSerializer
+from .serializers import PublicationSerializer, PublicationListSerializer, JournalClubArticleSerializer
 from .filters import PublicationFilter
 
 from papers.models import Publication, Commentary, JournalClubArticle
@@ -256,8 +256,26 @@ class PublicationViewSet(viewsets.ReadOnlyModelViewSet):
         """
         publications = self.get_queryset().filter(interesting_paper=True)
         serializer = self.get_serializer(publications, many=True)
-        
+
         return Response({
             'count': len(serializer.data),
             'results': serializer.data
         })
+
+
+class JournalClubArticleViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet for JournalClubArticle model providing read-only API access.
+
+    Provides endpoints for:
+    - GET /api/v2/journal-club/ - List all journal club articles
+    - GET /api/v2/journal-club/{id}/ - Retrieve a single article
+
+    Default ordering: -presentation_date (most recent first)
+    """
+
+    queryset = JournalClubArticle.objects.all()
+    serializer_class = JournalClubArticleSerializer
+    filter_backends = [OrderingFilter]
+    ordering_fields = ['presentation_date']
+    ordering = ['-presentation_date']

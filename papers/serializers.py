@@ -6,7 +6,7 @@ between Django model instances and JSON representations.
 """
 
 from rest_framework import serializers
-from papers.models import Publication
+from papers.models import Publication, JournalClubArticle
 
 class PublicationSerializer(serializers.ModelSerializer):
     """
@@ -71,6 +71,12 @@ class PublicationSerializer(serializers.ModelSerializer):
             'absolute_url',
         ]
 
+
+class JournalClubArticleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = JournalClubArticle
+        fields = ['id', 'citation', 'doi', 'presentation_date']
+        read_only_fields = ['id']
 
 class PublicationListSerializer(PublicationSerializer):
     """

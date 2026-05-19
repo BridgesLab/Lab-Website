@@ -880,3 +880,92 @@ class PapersSitemapTests(TestCase):
         commentary = Commentary.objects.first()
         if commentary:
             self.assertEqual(sitemap.lastmod(commentary), commentary.modified)
+
+
+class JournalClubArticleViewSetTest(APITestCase):
+    """Tests for the JournalClubArticleViewSet API at /api/v2/journal-club/."""
+
+    def setUp(self):
+        self.article1 = JournalClubArticle.objects.create(
+            citation="Smith J et al. Nature. 2023;1:1-10.",
+            doi="10.1000/test.001",
+            presentation_date=date(2023, 6, 1),
+        )
+        self.article2 = JournalClubArticle.objects.create(
+            citation="Jones B et al. Cell. 2022;2:20-30.",
+            doi="10.1000/test.002",
+            presentation_date=date(2022, 3, 15),
+        )
+        self.article_no_doi = JournalClubArticle.objects.create(
+            citation="Brown A et al. Science. 2021;3:5-8.",
+            presentation_date=date(2021, 9, 10),
+        )
+
+    def test_list_returns_200(self):
+        """GET /api/v2/journal-club/ returns 200."""
+        url = reverse('api-journalclub-list')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_list_returns_all_articles(self):
+        """List endpoint returns all journal club articles."""
+        url = reverse('api-journalclub-list')
+        response = self.client.get(url)
+        self.assertEqual(len(response.data['results']), 3)
+
+    def test_list_fields(self):
+        """List response includes only citation, doi, presentation_date, and id."""
+        url = reverse('api-journalclub-list')
+        response = self.client.get(url)
+        result = response.data['results'][0]
+        self.assertIn('id', result)
+        self.assertIn('citation', result)
+        self.assertIn('doi', result)
+        self.assertIn('presentation_date', result)
+        self.assertNotIn('commentary', result)
+
+    def test_list_ordered_by_presentation_date_descending(self):
+        """List endpoint returns articles ordered by -presentation_date."""
+        url = reverse('api-journalclub-list')
+        response = self.client.get(url)
+        dates = [r['presentation_date'] for r in response.data['results'] if r['presentation_date']]
+        self.assertEqual(dates, sorted(dates, reverse=True))
+
+    def test_detail_returns_200(self):
+        """GET /api/v2/journal-club/{id}/ returns 200."""
+        url = reverse('api-journalclub-detail', kwargs={'pk': self.article1.pk})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_detail_correct_fields(self):
+        """Detail response contains the correct citation and doi."""
+        url = reverse('api-journalclub-detail', kwargs={'pk': self.article1.pk})
+        response = self.client.get(url)
+        self.assertEqual(response.data['citation'], "Smith J et al. Nature. 2023;1:1-10.")
+        self.assertEqual(response.data['doi'], "10.1000/test.001")
+        self.assertEqual(response.data['presentation_date'], "2023-06-01")
+
+    def test_detail_404_for_nonexistent(self):
+        """Detail endpoint returns 404 for a non-existent pk."""
+        url = reverse('api-journalclub-detail', kwargs={'pk': 99999})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_article_with_null_doi(self):
+        """Articles with no DOI are returned with doi as null."""
+        url = reverse('api-journalclub-detail', kwargs={'pk': self.article_no_doi.pk})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsNone(response.data['doi'])
+
+    def test_list_json_format(self):
+        """List endpoint serves JSON content type."""
+        url = reverse('api-journalclub-list')
+        response = self.client.get(url, {'format': 'json'})
+        self.assertEqual(response['Content-Type'], 'application/json')
+
+    def test_no_write_access(self):
+        """POST to list endpoint is not allowed (read-only)."""
+        url = reverse('api-journalclub-list')
+        response = self.client.post(url, {'citation': 'New article'})
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
