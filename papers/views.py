@@ -158,15 +158,14 @@ class PublicationViewSet(viewsets.ReadOnlyModelViewSet):
     ViewSet for Publication model providing read-only API access.
     
     Provides endpoints for:
-    - GET /api/v2/publications/ - List all publications
+    - GET /api/v2/publications/ - List all laboratory publications
     - GET /api/v2/publications/{id}/ - Retrieve single publication
     - GET /api/v2/publications/set/{ids}/ - Retrieve multiple publications by IDs
     
     Supports filtering by:
     - year: Exact year match
     - type: Publication type (exact or contains)
-    - laboratory_paper: Boolean filter
-    - search: Full-text search across title, abstract, journal
+- search: Full-text search across title, abstract, journal
     
     Supports ordering by:
     - year, title, journal, date_added, date_last_modified
@@ -174,7 +173,7 @@ class PublicationViewSet(viewsets.ReadOnlyModelViewSet):
     Default ordering: -date_added (newest first)
     """
     
-    queryset = Publication.objects.all()
+    queryset = Publication.objects.filter(laboratory_paper=True)
     serializer_class = PublicationSerializer
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = PublicationFilter

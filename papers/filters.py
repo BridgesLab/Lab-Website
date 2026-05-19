@@ -18,7 +18,6 @@ class PublicationFilter(filters.FilterSet):
     Provides filtering capabilities for:
     - year: Exact year match
     - type: Publication type (exact or contains)
-    - laboratory_paper: Boolean filter
     - year_range: Filter by year range (e.g., ?year_after=2020&year_before=2024)
     """
     
@@ -27,7 +26,6 @@ class PublicationFilter(filters.FilterSet):
     year_before = django_filters.NumberFilter(field_name='year', lookup_expr='lte')
     type = django_filters.CharFilter(field_name='type', lookup_expr='iexact')
     type_contains = django_filters.CharFilter(field_name='type', lookup_expr='icontains')
-    laboratory_paper = django_filters.BooleanFilter(field_name='laboratory_paper')
     interesting_paper = django_filters.BooleanFilter(field_name='interesting_paper')
     journal = django_filters.CharFilter(field_name='journal', lookup_expr='icontains')
     
@@ -39,7 +37,6 @@ class PublicationFilter(filters.FilterSet):
             'year_before',
             'type',
             'type_contains',
-            'laboratory_paper',
             'interesting_paper',
             'journal',
         ]
