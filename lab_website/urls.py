@@ -57,6 +57,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/v2/', include('papers.api_urls')),
     path('api/v2/', include('personnel.api_urls')),
+    path('api/v2/', include('communication.api_urls')),
     
     # App includes (no namespace change here assuming no 3-tuples passed)
     path('contact/', include('communication.urls')), 

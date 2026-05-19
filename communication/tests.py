@@ -8,9 +8,13 @@ Since this app has no models there is model and view tests:
 
 """
 import urllib.error
-from unittest.mock import patch, Mock
+from unittest.mock import patch, Mock, MagicMock
+from io import BytesIO
 
 from django.urls import reverse
+
+from rest_framework.test import APITestCase
+from rest_framework import status
 
 from lab_website.tests import BasicTests
 
@@ -559,3 +563,108 @@ class PostDetailErrorTests(BasicTests):
         response = self.client.get('/posts/fixture-post', follow=True)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context['post_data'], 'Post is not Available.')
+
+
+class PostViewSetTest(APITestCase):
+    """Tests for the PostViewSet API at /api/v2/posts/."""
+
+    fixtures = ['test_post', 'test_publication', 'test_publication_personnel', 'test_project', 'test_personnel']
+
+    def test_list_returns_200(self):
+        """GET /api/v2/posts/ returns 200."""
+        url = reverse('api-post-list')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_list_returns_all_posts(self):
+        """List endpoint returns all posts."""
+        url = reverse('api-post-list')
+        response = self.client.get(url)
+        self.assertEqual(len(response.data['results']), 1)
+
+    def test_list_fields(self):
+        """List response includes title, author, created, modified but not content."""
+        url = reverse('api-post-list')
+        response = self.client.get(url)
+        result = response.data['results'][0]
+        self.assertIn('post_title', result)
+        self.assertIn('author', result)
+        self.assertIn('created', result)
+        self.assertIn('modified', result)
+        self.assertNotIn('content', result)
+
+    def test_list_author_has_personnel_api_url(self):
+        """Author in list response includes id, name fields and api_url."""
+        url = reverse('api-post-list')
+        response = self.client.get(url)
+        author = response.data['results'][0]['author']
+        self.assertIn('id', author)
+        self.assertIn('first_name', author)
+        self.assertIn('last_name', author)
+        self.assertIn('api_url', author)
+        self.assertEqual(author['api_url'], f"/api/v2/people/{author['id']}/")
+
+    def test_detail_returns_200(self):
+        """GET /api/v2/posts/{id}/ returns 200."""
+        post = Post.objects.get(pk=1)
+        url = reverse('api-post-detail', kwargs={'pk': post.pk})
+        with patch('urllib.request.urlopen') as mock_urlopen:
+            mock_urlopen.return_value = BytesIO(b'# Hello\nSome content.')
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    @patch('urllib.request.urlopen')
+    def test_detail_includes_markdown_content(self, mock_urlopen):
+        """Detail endpoint fetches markdown_url and returns raw content."""
+        mock_urlopen.return_value = BytesIO(b'# Hello\nSome content.')
+        post = Post.objects.get(pk=1)
+        url = reverse('api-post-detail', kwargs={'pk': post.pk})
+        response = self.client.get(url)
+        self.assertIn('content', response.data)
+        self.assertEqual(response.data['content'], '# Hello\nSome content.')
+
+    @patch('urllib.request.urlopen')
+    def test_detail_content_null_on_url_error(self, mock_urlopen):
+        """Detail endpoint returns null content when markdown URL is unreachable."""
+        mock_urlopen.side_effect = urllib.error.URLError("connection refused")
+        post = Post.objects.get(pk=1)
+        url = reverse('api-post-detail', kwargs={'pk': post.pk})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsNone(response.data['content'])
+
+    @patch('urllib.request.urlopen')
+    def test_detail_content_null_on_value_error(self, mock_urlopen):
+        """Detail endpoint returns null content on invalid URL."""
+        mock_urlopen.side_effect = ValueError("bad url")
+        post = Post.objects.get(pk=1)
+        url = reverse('api-post-detail', kwargs={'pk': post.pk})
+        response = self.client.get(url)
+        self.assertIsNone(response.data['content'])
+
+    def test_detail_includes_markdown_url(self):
+        """Detail endpoint includes the markdown_url field."""
+        post = Post.objects.get(pk=1)
+        url = reverse('api-post-detail', kwargs={'pk': post.pk})
+        with patch('urllib.request.urlopen') as mock_urlopen:
+            mock_urlopen.return_value = BytesIO(b'content')
+            response = self.client.get(url)
+        self.assertIn('markdown_url', response.data)
+
+    def test_detail_404_for_nonexistent(self):
+        """Detail endpoint returns 404 for a non-existent pk."""
+        url = reverse('api-post-detail', kwargs={'pk': 99999})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_no_write_access(self):
+        """POST to list endpoint is not allowed (read-only)."""
+        url = reverse('api-post-list')
+        response = self.client.post(url, {'post_title': 'New Post'})
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def test_list_json_format(self):
+        """List endpoint serves JSON content type."""
+        url = reverse('api-post-list')
+        response = self.client.get(url, {'format': 'json'})
+        self.assertEqual(response['Content-Type'], 'application/json')

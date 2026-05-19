@@ -23,7 +23,11 @@ from django.urls import reverse_lazy
 
 from django.contrib.auth.mixins import PermissionRequiredMixin
 
+from rest_framework import viewsets
+from rest_framework.filters import OrderingFilter
+
 from communication.models import LabAddress, LabLocation, Post
+from communication.serializers import PostListSerializer, PostDetailSerializer
 from papers.models import Commentary
 
 import requests
@@ -410,13 +414,38 @@ class PostUpdate(PermissionRequiredMixin, UpdateView):
     
 class PostDelete(PermissionRequiredMixin, DeleteView):
     '''This view is for deleting a :class:`~commentary.models.Post`.
-    
+
     It requires the permissions to delete a paper and is found at the url **/post/<slug>/delete**.'''
-    
+
     permission_required = 'communication.delete_post'
     slug_field = "post_slug"
-    slug_url_kwarg = "post_slug"      
+    slug_url_kwarg = "post_slug"
     model = Post
     template_name = 'confirm_delete.html'
     template_object_name = 'object'
-    success_url = reverse_lazy('post-list')                                               
+    success_url = reverse_lazy('post-list')
+
+
+class PostViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet for Post model providing read-only API access.
+
+    Provides endpoints for:
+    - GET /api/v2/posts/ - List all posts (title, author, created, modified)
+    - GET /api/v2/posts/{id}/ - Retrieve a single post including raw markdown content
+
+    The detail endpoint fetches the post's markdown_url and returns the raw
+    markdown as a 'content' field. Returns null if the URL is unreachable.
+
+    Default ordering: -created (newest first)
+    """
+
+    queryset = Post.objects.select_related('author').all()
+    filter_backends = [OrderingFilter]
+    ordering_fields = ['created', 'modified', 'post_title']
+    ordering = ['-created']
+
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return PostListSerializer
+        return PostDetailSerializer                                               
