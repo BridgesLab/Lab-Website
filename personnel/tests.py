@@ -7,8 +7,13 @@ Replace this with more appropriate tests for your application.
 
 from datetime import date
 
+from django.urls import reverse
+from rest_framework.test import APITestCase
+from rest_framework import status
+
 from personnel.models import Person, JobPosting, Organization, Role, JobType, Degree
 from personnel.admin import CurrentLabMemberAdmin, CurrentLabMember
+from personnel.serializers import PersonSerializer, PersonListSerializer, RoleSerializer
 from lab_website.tests import BasicTests
 from personnel.sitemap import LabPersonnelSitemap
 from django.test import RequestFactory
@@ -367,3 +372,192 @@ class CurrentLabMemberAdminTests(BasicTests):
         person.lab_roles.clear()
         result = self.admin.lab_roles_display(person)
         self.assertEqual(result, "None")
+
+
+class PersonViewSetTest(APITestCase):
+    """Tests for the PersonViewSet API at /api/v2/people/."""
+
+    def setUp(self):
+        self.org = Organization.objects.create(
+            name="University of Michigan",
+            department="Nutritional Sciences",
+            type="Academic",
+        )
+        self.job_type = JobType.objects.create(
+            job_title="Graduate Student",
+            trainee_status=True,
+            student_status=True,
+            employee_status=False,
+        )
+        self.current_member = Person.objects.create(
+            first_name="Jane",
+            last_name="Smith",
+            email="jane@example.com",
+            biography="A biography.",
+            current_lab_member=True,
+            alumni=False,
+        )
+        self.former_member = Person.objects.create(
+            first_name="Bob",
+            last_name="Jones",
+            current_lab_member=False,
+            alumni=True,
+        )
+
+    def test_list_returns_200(self):
+        """GET /api/v2/people/ returns 200."""
+        url = reverse('api-person-list')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_list_only_current_members(self):
+        """List endpoint excludes non-current lab members."""
+        url = reverse('api-person-list')
+        response = self.client.get(url)
+        ids = [r['id'] for r in response.data['results']]
+        self.assertIn(self.current_member.pk, ids)
+        self.assertNotIn(self.former_member.pk, ids)
+
+    def test_list_excludes_biography(self):
+        """List endpoint uses PersonListSerializer — no biography field."""
+        url = reverse('api-person-list')
+        response = self.client.get(url)
+        self.assertNotIn('biography', response.data['results'][0])
+
+    def test_detail_returns_200(self):
+        """GET /api/v2/people/{id}/ returns 200 for a current member."""
+        url = reverse('api-person-detail', kwargs={'pk': self.current_member.pk})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_detail_includes_biography(self):
+        """Detail endpoint uses PersonSerializer — includes biography."""
+        url = reverse('api-person-detail', kwargs={'pk': self.current_member.pk})
+        response = self.client.get(url)
+        self.assertIn('biography', response.data)
+        self.assertEqual(response.data['biography'], 'A biography.')
+
+    def test_detail_404_for_former_member(self):
+        """Detail endpoint returns 404 for a non-current lab member."""
+        url = reverse('api-person-detail', kwargs={'pk': self.former_member.pk})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_detail_404_for_nonexistent(self):
+        """Detail endpoint returns 404 for a non-existent pk."""
+        url = reverse('api-person-detail', kwargs={'pk': 99999})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_list_json_format(self):
+        """List endpoint serves JSON content type."""
+        url = reverse('api-person-list')
+        response = self.client.get(url, {'format': 'json'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response['Content-Type'], 'application/json')
+
+    def test_list_ordered_by_last_name(self):
+        """List endpoint returns people ordered by last_name by default."""
+        Person.objects.create(first_name="Alice", last_name="Aardvark",
+                              current_lab_member=True, alumni=False)
+        url = reverse('api-person-list')
+        response = self.client.get(url)
+        last_names = [r['last_name'] for r in response.data['results']]
+        self.assertEqual(last_names, sorted(last_names))
+
+    def test_detail_includes_lab_roles(self):
+        """Detail endpoint includes lab_roles with job_type and organization."""
+        role = Role.objects.create(
+            job_type=self.job_type,
+            organization=self.org,
+            public=True,
+        )
+        self.current_member.lab_roles.add(role)
+        url = reverse('api-person-detail', kwargs={'pk': self.current_member.pk})
+        response = self.client.get(url)
+        self.assertIn('lab_roles', response.data)
+        self.assertEqual(len(response.data['lab_roles']), 1)
+        self.assertEqual(response.data['lab_roles'][0]['job_type'], 'Graduate Student')
+
+    def test_detail_publications_only_lab_papers(self):
+        """Publications in the detail response only include laboratory_paper=True."""
+        from papers.models import Publication, AuthorDetails
+        lab_pub = Publication.objects.create(
+            title="Lab Paper", year=2023, laboratory_paper=True,
+            interesting_paper=False, preprint=False,
+        )
+        non_lab_pub = Publication.objects.create(
+            title="External Paper", year=2022, laboratory_paper=False,
+            interesting_paper=False, preprint=False,
+        )
+        author_detail_lab = AuthorDetails.objects.create(
+            author=self.current_member, order=1,
+            corresponding_author=True, equal_contributors=False,
+        )
+        author_detail_ext = AuthorDetails.objects.create(
+            author=self.current_member, order=1,
+            corresponding_author=False, equal_contributors=False,
+        )
+        lab_pub.authors.add(author_detail_lab)
+        non_lab_pub.authors.add(author_detail_ext)
+
+        url = reverse('api-person-detail', kwargs={'pk': self.current_member.pk})
+        response = self.client.get(url)
+        pub_titles = [p['title'] for p in response.data['publications']]
+        self.assertIn('Lab Paper', pub_titles)
+        self.assertNotIn('External Paper', pub_titles)
+
+    def test_detail_includes_absolute_url(self):
+        """Detail endpoint includes absolute_url for the person."""
+        url = reverse('api-person-detail', kwargs={'pk': self.current_member.pk})
+        response = self.client.get(url)
+        self.assertIn('absolute_url', response.data)
+        self.assertIn('jane-smith', response.data['absolute_url'])
+
+
+class PersonSerializerTest(APITestCase):
+    """Unit tests for PersonSerializer and PersonListSerializer."""
+
+    def setUp(self):
+        self.person = Person.objects.create(
+            first_name="Jane",
+            last_name="Smith",
+            biography="Bio text.",
+            current_lab_member=True,
+            alumni=False,
+        )
+
+    def test_list_serializer_excludes_biography(self):
+        """PersonListSerializer does not include biography."""
+        serializer = PersonListSerializer(self.person)
+        self.assertNotIn('biography', serializer.data)
+
+    def test_detail_serializer_includes_biography(self):
+        """PersonSerializer includes biography."""
+        serializer = PersonSerializer(self.person)
+        self.assertIn('biography', serializer.data)
+        self.assertEqual(serializer.data['biography'], 'Bio text.')
+
+    def test_detail_serializer_includes_publications_field(self):
+        """PersonSerializer includes a publications list."""
+        serializer = PersonSerializer(self.person)
+        self.assertIn('publications', serializer.data)
+        self.assertIsInstance(serializer.data['publications'], list)
+
+    def test_role_serializer_fields(self):
+        """RoleSerializer exposes job_type, organization, start_date, end_date."""
+        org = Organization.objects.create(
+            name="UM", department="Nutritional Sciences", type="Academic"
+        )
+        job_type = JobType.objects.create(
+            job_title="Postdoc", trainee_status=True,
+            student_status=False, employee_status=True,
+        )
+        role = Role.objects.create(
+            job_type=job_type, organization=org,
+            start_date=date(2022, 1, 1), public=True,
+        )
+        serializer = RoleSerializer(role)
+        self.assertEqual(serializer.data['job_type'], 'Postdoc')
+        self.assertIn('start_date', serializer.data)
+        self.assertIn('end_date', serializer.data)

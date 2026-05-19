@@ -5,7 +5,11 @@
 from django.views.generic.list import ListView
 from django.views.generic.detail import DetailView
 
+from rest_framework import viewsets
+from rest_framework.filters import OrderingFilter
+
 from personnel.models import Person, JobPosting
+from personnel.serializers import PersonSerializer, PersonListSerializer
 from communication.models import LabAddress
 
     
@@ -39,6 +43,31 @@ class LaboratoryAlumniList(LaboratoryPersonnelList):
         context = super(LaboratoryAlumniList, self).get_context_data(**kwargs)
         context['personnel_type'] = "alumni"
         return context
+
+class PersonViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet for Person model providing read-only API access.
+
+    Provides endpoints for:
+    - GET /api/v2/people/ - List all current lab members
+    - GET /api/v2/people/{id}/ - Retrieve single person
+
+    Only current lab members (current_lab_member=True) are returned.
+    Each person includes their lab roles and laboratory publications.
+
+    Default ordering: last_name
+    """
+
+    queryset = Person.objects.filter(current_lab_member=True).prefetch_related('lab_roles__job_type', 'lab_roles__organization')
+    filter_backends = [OrderingFilter]
+    ordering_fields = ['last_name', 'first_name']
+    ordering = ['last_name']
+
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return PersonListSerializer
+        return PersonSerializer
+
 
 class LaboratoryPersonnelDetail(DetailView):
     '''This class generates the view for personnel-details located at **/personnel/<name_slug>**.
