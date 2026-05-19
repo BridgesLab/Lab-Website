@@ -32,8 +32,8 @@ class PostsFeed(Feed):
         return Post.objects.all()
 
     def item_title(self, item):
-        '''The title of each item will be the unicode representation''' 
-        return item.__unicode__()
+        '''The title of each item will be the unicode representation'''
+        return str(item)
 
     def item_author_name(self, item):
         '''The author of the item.'''
@@ -49,7 +49,9 @@ class PostsFeed(Feed):
 
     def item_updateddate(self, item):
         '''The date when this commentary was updated.'''
-        return datetime.combine(item.modified, time())
+        if item.modified:
+            return datetime.combine(item.modified, time())
+        return datetime.combine(item.created, time())
 
     def item_copyright(self, item):
         '''The copyright is always CC-BY for posts.'''

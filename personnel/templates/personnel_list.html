@@ -1,6 +1,25 @@
 {% extends "base.html" %}
-{% block scripts %}
 
+{% block scripts %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "EducationalOrganization",
+  "name": "{{ lab_name }}",
+  "url": "{{ request.scheme }}://{{ request.get_host }}{% url 'home' %}",
+  "member": [
+    {% for person in personnel %}
+    {
+      "@type": "Person",
+      "name": "{{ person|escapejs }}",
+      "url": "{{ request.scheme }}://{{ request.get_host }}{{ person.get_absolute_url }}",
+      {% if person.image %}"image": "{{ request.scheme }}://{{ request.get_host }}{{ person.image.url }}",{% endif %}
+      "jobTitle": "{% with person.lab_roles.all|first as role %}{{ role|striptags|escapejs }}{% endwith %}"
+    }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  ]
+}
+</script>
 {% endblock %}
 
 {% block title %}<title>{% if personnel_type == 'alumni' %}Former {% endif %}Members of the Bridges Lab</title>{% endblock %}
@@ -10,29 +29,29 @@
 {% endblock %}
 
 {% block content %}
-<article itemscope itemtype="http://schema.org/Organization">
+<article> {# Removed Microdata attributes #}
 
 {% if personnel_type == 'current' %}
 {% include "job_posting_snippet.html" %}
 {% endif %}
+
 <div class="row">
 {% for person in personnel %}
- 	<div class="col-sm-4" property="members" typeof="http://schema.org/Person" id="{{ person|slugify|lower }}">
-    	<div class="card text-center">
-{% include 'personnel_snippet.html' %}
-		</div>
-	</div>
+    <div class="col-sm-4 mb-4" id="{{ person|slugify|lower }}"> {# Removed property/typeof #}
+        <div class="card h-100 text-center">
+            {% include 'personnel_snippet.html' %}
+        </div>
+    </div>
 {% endfor %}
 </div>
 
 {% if personnel_type == 'current' %}
-<p>To see previous lab members see <a href="{% url 'laboratory-alumni' %}">lab alumni list</a>.</p>
+<p class="mt-4">To see previous lab members, see the <a href="{% url 'laboratory-alumni' %}">lab alumni list</a>.</p>
 {% endif %}
 
 {% if personnel_type == 'alumni' %}
-<p>To see current lab members see <a href="{% url 'laboratory-personnel' %}">lab members list</a>.</p>
+<p class="mt-4">To see current lab members, see the <a href="{% url 'laboratory-personnel' %}">lab members list</a>.</p>
 {% endif %}
 
 </article>
 {% endblock %}
-

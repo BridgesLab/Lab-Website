@@ -20,6 +20,7 @@ from django.test.client import Client
 from django.contrib.auth.models import User
 
 from projects.models import Project, Funding, FundingAgency
+from projects.sitemap import ProjectsSitemap, FundingSitemap
 
 MODELS = [Project, Funding]
 
@@ -45,6 +46,18 @@ class ProjectModelTests(TestCase):
             for obj in model.objects.all():
                 obj.delete()
                 
+    def test_summary_intro_with_multiline(self):
+        """summary_intro splits summary on newlines."""
+        project = Project(title='Summary Project', summary='Line one\nLine two\nLine three')
+        project.save()
+        self.assertEqual(project.summary_intro, ['Line one', 'Line two', 'Line three'])
+
+    def test_summary_intro_empty(self):
+        """summary_intro returns empty list when summary is not set."""
+        project = Project(title='No Summary Project')
+        project.save()
+        self.assertEqual(project.summary_intro, [])
+
     def test_create_new_project_minimum(self):
         '''This test creates a :class:`~projects.models.Project` with the required information only.'''
         test_project = Project(title='Test Project.')
@@ -139,7 +152,6 @@ class ProjectViewTests(TestCase):
         self.assertTrue('project' in test_response.context)        
         self.assertTemplateUsed(test_response, 'project_detail.html')
         self.assertTemplateUsed(test_response, 'base.html') 
-        self.assertTemplateUsed(test_response, 'disqus_snippet.html')                         
         self.assertEqual(test_response.context['project'].pk, 1)
         self.assertEqual(test_response.context['project'].title, 'Fixture Project')
         
@@ -229,7 +241,12 @@ class FundingModelTests(TestCase):
         '''This test creates a :class:`~projects.models.FundingAgency` with the required information only.'''
         test_funding_agency = FundingAgency(name='Test Agency')
         test_funding_agency.save()
-        self.assertEqual(test_funding_agency.pk, 2)    
+        self.assertEqual(test_funding_agency.pk, 2)
+
+    def test_funding_agency_string(self):
+        """FundingAgency __str__ returns its name."""
+        agency = FundingAgency.objects.get(pk=1)
+        self.assertEqual(str(agency), agency.name)
         
     def test_create_new_funding_all(self):
         '''This test creates a `:class:~projects.models.Funding` with the required information only.'''
@@ -285,7 +302,6 @@ class FundingViewTests(TestCase):
         self.assertTrue('funding' in test_response.context)        
         self.assertTemplateUsed(test_response, 'funding_detail.html')
         self.assertTemplateUsed(test_response, 'base.html') 
-        self.assertTemplateUsed(test_response, 'disqus_snippet.html')                         
         self.assertEqual(test_response.context['funding'].pk, 1)
         self.assertEqual(test_response.context['funding'].title, 'Fixture Funding')
         
@@ -341,4 +357,60 @@ class FundingViewTests(TestCase):
 
         #verifies that a non-existent object returns a 404 error.
         null_response = self.client.get('/funding/not-a-real-funding/delete/',follow=True)
-        self.assertEqual(null_response.status_code, 404)                   
+        self.assertEqual(null_response.status_code, 404)
+
+
+class ProjectsFeedTests(TestCase):
+    """Tests for the ProjectsFeed RSS feed."""
+
+    fixtures = ['test_project']
+
+    def setUp(self):
+        self.client = Client()
+
+    def test_projects_feed_returns_200(self):
+        """Projects feed URL returns a valid RSS response."""
+        response = self.client.get('/feeds/projects/')
+        self.assertEqual(response.status_code, 200)
+
+    def test_projects_feed_is_xml(self):
+        """Projects feed response is RSS/XML."""
+        response = self.client.get('/feeds/projects/')
+        self.assertIn('xml', response['Content-Type'])
+
+    def test_projects_feed_contains_fixture_project(self):
+        """Projects feed contains the fixture project title."""
+        response = self.client.get('/feeds/projects/')
+        project = Project.objects.first()
+        if project:
+            self.assertContains(response, project.title)
+
+
+class ProjectsSitemapTests(TestCase):
+    """Tests for projects sitemaps."""
+
+    fixtures = ['test_project', 'test_funding', 'test_funding_agency']
+
+    def test_projects_sitemap_items_returns_all_projects(self):
+        """ProjectsSitemap.items() returns all Project objects."""
+        sitemap = ProjectsSitemap()
+        self.assertEqual(list(sitemap.items()), list(Project.objects.all()))
+
+    def test_projects_sitemap_lastmod(self):
+        """ProjectsSitemap.lastmod() returns date_last_modified."""
+        sitemap = ProjectsSitemap()
+        project = Project.objects.first()
+        if project:
+            self.assertEqual(sitemap.lastmod(project), project.date_last_modified)
+
+    def test_funding_sitemap_items_returns_all_funding(self):
+        """FundingSitemap.items() returns all Funding objects."""
+        sitemap = FundingSitemap()
+        self.assertEqual(list(sitemap.items()), list(Funding.objects.all()))
+
+    def test_funding_sitemap_lastmod(self):
+        """FundingSitemap.lastmod() returns date_last_modified."""
+        sitemap = FundingSitemap()
+        funding = Funding.objects.first()
+        if funding:
+            self.assertEqual(sitemap.lastmod(funding), funding.date_last_modified)

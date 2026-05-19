@@ -8,6 +8,7 @@ import urllib.error
 import urllib.parse
 import datetime, time
 import requests
+from requests.exceptions import RequestException
 import markdown
 
 from django.conf import settings
@@ -265,15 +266,15 @@ class DataResourceSharingPolicyView(TemplateView):
             response = urllib.request.urlopen(request)
         except urllib.error.URLError as e:
             if e.code == 404:
-                data_sharing_policy = "Publication Policy File is not Available."
+                publication_policy = "Publication Policy File is not Available."
             else:
                 #this is for a non-404 URLError.
-                data_sharing_policy = "Publication Policy File is not Available."
+                publication_policy = "Publication Policy File is not Available."
         except ValueError:
-            data_sharing_policy = "Publication Policy File is not Available."        
+            publication_policy = "Publication Policy File is not Available."
         else:
-             #successful connection
-             publication_policy = response.read()         
+            #successful connection
+            publication_policy = response.read()
         context['data_sharing_policy'] = publication_policy
         context['data_sharing_policy_source'] = settings.DATA_SHARING_FILE
         return context
@@ -352,7 +353,7 @@ class PostList(ListView):
         return context
 
 class PostDetail(DetailView):
-    '''This class generates the view for post-detail located at **/post/<slug>**.
+    '''This class generates the view for post-detail located at **/post/<slug>**. It conditionally looks for citations in the format of [^1] with a footnote below the post and if present (has citations=T) loads in several other css extensions to render those nicely.
     '''
     model = Post
     slug_field = "post_slug"
@@ -363,18 +364,26 @@ class PostDetail(DetailView):
         context = super().get_context_data(**kwargs)
         request_url = str(context['post'].markdown_url)
         
-        request = urllib.request.Request(request_url)
         try:
+            request = urllib.request.Request(request_url)
             response = urllib.request.urlopen(request)
-        except urllib.error.URLError as e:
-            post_data = "Post is not Available."
-        except ValueError:
-            post_data = "Post is not Available."        
-        else:
             post_data_raw = response.read().decode('utf-8')
-            post_data = markdown.markdown(post_data_raw)
-        
-        context['post_data'] = post_data
+            
+            # 1. Check for citations before converting to HTML
+            # We check for "[^" which is the standard Markdown footnote opener
+            context['has_citations'] = "[^" in post_data_raw
+            
+            # 2. Enable extensions! 'extra' includes footnotes, tables, and more.
+            # 'attr_list' allows you to add CSS classes to images/links in MD.
+            context['post_data'] = markdown.markdown(
+                post_data_raw, 
+                extensions=['footnotes', 'tables', 'attr_list', 'def_list', 'fenced_code','mdx_math',]
+            )
+            
+        except (urllib.error.URLError, ValueError):
+            context['post_data'] = "Post is not Available."
+            context['has_citations'] = False
+            
         return context
                 
 class PostCreate(PermissionRequiredMixin, CreateView):

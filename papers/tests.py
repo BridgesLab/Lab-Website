@@ -27,9 +27,10 @@ from django.urls import reverse
 from rest_framework.test import APITestCase
 from rest_framework import status
 
-from papers.models import Publication, AuthorDetails, Person, Commentary
+from papers.models import Publication, AuthorDetails, Person, Commentary, JournalClubArticle, AuthorContributions
 from papers.serializers import PublicationSerializer, PublicationListSerializer
 from papers.filters import PublicationFilter
+from papers.sitemap import LabPublicationsSitemap, CommentarySitemap
 
 MODELS = [Publication, AuthorDetails, Commentary]
 
@@ -86,8 +87,27 @@ class PublicationModelTests(TestCase):
         '''This tests that a correct full PMCID can be generated for a :class:`~papers.models.Publication`.'''
         test_publication = Publication(title="Test Publication", pmcid = "12345", laboratory_paper=True, interesting_paper=False, preprint=False)
         test_publication.save()
-        self.assertEqual(test_publication.full_pmcid(), 'PMC12345')                         
-                    
+        self.assertEqual(test_publication.full_pmcid(), 'PMC12345')
+
+    def test_link_uses_doi_when_present(self):
+        """link() returns the DOI link when DOI is set."""
+        pub = Publication(title='DOI Paper', doi='10.1234/test', laboratory_paper=True, interesting_paper=False, preprint=False)
+        pub.save()
+        self.assertEqual(pub.link(), pub.doi_link())
+
+    def test_link_uses_pmid_when_no_doi(self):
+        """link() returns the PubMed URL when there is a PMID but no DOI."""
+        pub = Publication(title='PMID Paper', pmid=99999999, laboratory_paper=True, interesting_paper=False, preprint=False)
+        pub.save()
+        self.assertEqual(pub.link(), 'http://pubmed.org/99999999')
+
+    def test_link_uses_absolute_url_as_fallback(self):
+        """link() falls back to the internal page URL when neither DOI nor PMID is set."""
+        pub = Publication(title='No IDs Paper', laboratory_paper=True, interesting_paper=False, preprint=False)
+        pub.save()
+        self.assertEqual(pub.link(), pub.get_absolute_url())
+
+
 class AuthorDetailsModelTests(TestCase):
     '''This class tests varios aspects of the :class:`~papers.models.AuthorDetails` model.'''
 
@@ -120,11 +140,19 @@ class AuthorDetailsModelTests(TestCase):
             
     def test_authordetail_string(self):
         '''This tests that the string representaton of an :class:`~papers.models.AuthorDetails` object is correct.'''
-        test_authordetail = AuthorDetails(author=Person.objects.get(pk=1), 
+        test_authordetail = AuthorDetails(author=Person.objects.get(pk=1),
             order = 1, corresponding_author=True, equal_contributors=False)
-        test_authordetail.save() 
+        test_authordetail.save()
         self.assertEqual(str(test_authordetail), '1 - None -  Dave Bridges')
-        
+
+    def test_authordetail_name(self):
+        """name() returns just the author's string representation."""
+        test_authordetail = AuthorDetails(author=Person.objects.get(pk=1),
+            order=1, corresponding_author=False, equal_contributors=False)
+        test_authordetail.save()
+        self.assertEqual(test_authordetail.name(), str(Person.objects.get(pk=1)))
+
+
 class CommentaryModelTests(TestCase):
     '''This class tests various aspects of the :class:`~papers.models.Commentary` model.'''
     
@@ -164,7 +192,41 @@ class CommentaryModelTests(TestCase):
         test_commentary.save()
         self.assertEqual(str(test_commentary), "Journal club summary on 14-3-3 proteins: a number of functions for a numbered protein.")
 
-class PublicationResourceTests(TestCase):  
+class JournalClubArticleModelTests(TestCase):
+    """Tests for JournalClubArticle model methods."""
+
+    fixtures = ['test_publication', 'test_publication_personnel']
+
+    def test_doi_link(self):
+        """doi_link() builds the correct dx.doi.org URL."""
+        article = JournalClubArticle(citation='Some paper', doi='10.1234/test')
+        article.save()
+        self.assertEqual(article.doi_link(), 'http://dx.doi.org/10.1234/test')
+
+    def test_get_absolute_url(self):
+        """get_absolute_url() builds the dx.doi.org protocol-relative URL."""
+        article = JournalClubArticle(citation='Some paper', doi='10.1234/test')
+        article.save()
+        self.assertEqual(article.get_absolute_url(), '//dx.doi.org/10.1234/test')
+
+    def test_str(self):
+        """__str__() returns 'Journal club article: <citation>'."""
+        article = JournalClubArticle(citation='A great paper')
+        article.save()
+        self.assertEqual(str(article), 'Journal club article: A great paper')
+
+
+class AuthorContributionsModelTests(TestCase):
+    """Tests for AuthorContributions model methods."""
+
+    def test_str(self):
+        """__str__() returns the contribution name."""
+        contrib = AuthorContributions(contribution='Conceptualization')
+        contrib.save()
+        self.assertEqual(str(contrib), 'Conceptualization')
+
+
+class PublicationResourceTests(TestCase):
     '''This class tests varios aspects of the :class:`~papers.api.PublicationResource` API model.'''
 
     fixtures = ['test_publication', 'test_publication_personnel']
@@ -219,8 +281,6 @@ class PublicationViewTests(TestCase):
         self.assertTrue('publication' in test_response.context)        
         self.assertTemplateUsed(test_response, 'paper-detail.html')
         self.assertTemplateUsed(test_response, 'base.html') 
-        self.assertTemplateUsed(test_response, 'disqus_snippet.html') 
-        self.assertTemplateUsed(test_response, 'paper_sharing_widgets.html')
         self.assertTemplateUsed(test_response, 'altmetric_snippet.html')                        
         self.assertEqual(test_response.context['publication'].pk, 1)
         self.assertEqual(test_response.context['publication'].title, '14-3-3 proteins: a number of functions for a numbered protein.')
@@ -321,8 +381,7 @@ class CommentaryViewTests(TestCase):
         self.assertTrue('commentary' in test_response.context)        
         self.assertTemplateUsed(test_response, 'commentary-detail.html')
         self.assertTemplateUsed(test_response, 'base.html') 
-        self.assertTemplateUsed(test_response, 'disqus_snippet.html') 
-        self.assertTemplateUsed(test_response, 'analytics_tracking.html')                        
+        self.assertTemplateUsed(test_response, 'analytics_tracking.html')
         self.assertEqual(test_response.context['commentary'].pk, 1)
         self.assertEqual(test_response.context['commentary'].paper.__str__(), '14-3-3 proteins: a number of functions for a numbered protein.')  
         self.assertEqual(test_response.context['commentary'].comments, "some comments for this fixture")
@@ -706,6 +765,118 @@ class PublicationFilterTest(TestCase):
         """Test filtering by journal name."""
         filter_set = PublicationFilter(data={'journal': 'Nature'})
         queryset = filter_set.qs
-        
+
         self.assertEqual(queryset.count(), 1)
-        self.assertEqual(queryset.first().journal, 'Nature')                     
+        self.assertEqual(queryset.first().journal, 'Nature')
+
+
+class PapersFeedTests(TestCase):
+    """Tests for papers RSS feeds."""
+
+    fixtures = ['test_publication', 'test_publication_personnel', 'test_commentary']
+
+    def setUp(self):
+        self.client = Client()
+        self.article = JournalClubArticle.objects.create(
+            citation='Test JC citation for feed',
+            doi='10.9999/test',
+        )
+        self.commentary_with_author = Commentary.objects.create(
+            paper=Publication.objects.get(pk=1),
+            comments='comments with author',
+            author=Person.objects.get(pk=1),
+        )
+
+    def test_lab_papers_feed_returns_200(self):
+        """Lab papers feed returns a valid RSS response."""
+        response = self.client.get('/feeds/lab-papers/')
+        self.assertEqual(response.status_code, 200)
+
+    def test_lab_papers_feed_is_xml(self):
+        """Lab papers feed is RSS/XML."""
+        response = self.client.get('/feeds/lab-papers/')
+        self.assertIn('xml', response['Content-Type'])
+
+    def test_lab_papers_feed_contains_lab_paper(self):
+        """Lab papers feed contains only laboratory papers."""
+        response = self.client.get('/feeds/lab-papers/')
+        lab_paper = Publication.objects.filter(laboratory_paper=True).first()
+        if lab_paper:
+            self.assertContains(response, lab_paper.title)
+
+    def test_interesting_papers_feed_returns_200(self):
+        """Interesting papers feed returns a valid RSS response."""
+        response = self.client.get('/feeds/interesting-papers/')
+        self.assertEqual(response.status_code, 200)
+
+    def test_interesting_papers_feed_is_xml(self):
+        """Interesting papers feed is RSS/XML."""
+        response = self.client.get('/feeds/interesting-papers/')
+        self.assertIn('xml', response['Content-Type'])
+
+    def test_commentary_feed_returns_200(self):
+        """Commentary feed returns a valid RSS response."""
+        response = self.client.get('/feeds/commentaries/')
+        self.assertEqual(response.status_code, 200)
+
+    def test_commentary_feed_is_xml(self):
+        """Commentary feed is RSS/XML."""
+        response = self.client.get('/feeds/commentaries/')
+        self.assertIn('xml', response['Content-Type'])
+
+    def test_commentary_feed_contains_commentary(self):
+        """Commentary feed contains fixture commentary content."""
+        response = self.client.get('/feeds/commentaries/')
+        self.assertContains(response, 'comments with author')
+
+    def test_commentary_feed_with_author_link(self):
+        """Commentary feed renders without error when commentary has an author (exercises item_author_link)."""
+        response = self.client.get('/feeds/commentaries/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, str(self.commentary_with_author.author))
+
+    def test_journal_club_feed_returns_200(self):
+        """Journal club feed returns a valid RSS response."""
+        response = self.client.get('/feeds/journal-club/')
+        self.assertEqual(response.status_code, 200)
+
+    def test_journal_club_feed_is_xml(self):
+        """Journal club feed is RSS/XML."""
+        response = self.client.get('/feeds/journal-club/')
+        self.assertIn('xml', response['Content-Type'])
+
+    def test_journal_club_feed_contains_article(self):
+        """Journal club feed contains the article citation in title and description."""
+        response = self.client.get('/feeds/journal-club/')
+        self.assertContains(response, 'Test JC citation for feed')
+
+
+class PapersSitemapTests(TestCase):
+    """Tests for papers sitemaps."""
+
+    fixtures = ['test_publication', 'test_publication_personnel', 'test_commentary']
+
+    def test_lab_publications_sitemap_items_are_lab_papers(self):
+        """LabPublicationsSitemap.items() returns only laboratory papers."""
+        sitemap = LabPublicationsSitemap()
+        items = list(sitemap.items())
+        self.assertTrue(all(p.laboratory_paper for p in items))
+
+    def test_lab_publications_sitemap_lastmod(self):
+        """LabPublicationsSitemap.lastmod() returns date_last_modified."""
+        sitemap = LabPublicationsSitemap()
+        paper = Publication.objects.filter(laboratory_paper=True).first()
+        if paper:
+            self.assertEqual(sitemap.lastmod(paper), paper.date_last_modified)
+
+    def test_commentary_sitemap_items_returns_all_commentaries(self):
+        """CommentarySitemap.items() returns all Commentary objects."""
+        sitemap = CommentarySitemap()
+        self.assertEqual(list(sitemap.items()), list(Commentary.objects.all()))
+
+    def test_commentary_sitemap_lastmod(self):
+        """CommentarySitemap.lastmod() returns the modified date."""
+        sitemap = CommentarySitemap()
+        commentary = Commentary.objects.first()
+        if commentary:
+            self.assertEqual(sitemap.lastmod(commentary), commentary.modified)

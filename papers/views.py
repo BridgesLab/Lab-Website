@@ -55,12 +55,20 @@ class InterestingPaperList(ListView):
 
 class PaperDetailView(DetailView):
     '''This class generates the view for paper-details located at **/papers/<title_slug>**.
-    
+
     '''
     model = Publication
     slug_field = "title_slug"
     slug_url_kwarg = "title_slug"
     template_name = "paper-detail.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['authors_with_contributions'] = [
+            a for a in self.object.authors.all()
+            if a.contribution.exists()
+        ]
+        return context
                 
 class PaperCreate(PermissionRequiredMixin, CreateView):
     '''This view is for creating a new :class:`~papers.models.Publication`.
