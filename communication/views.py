@@ -377,6 +377,14 @@ class PostDetail(DetailView):
             # Strip YAML front matter (---...---) so it doesn't render as text
             post_data_raw = re.sub(r'^---\s*\n.*?\n---\s*\n', '', post_data_raw, flags=re.DOTALL)
 
+            # Rewrite relative image URLs to absolute using the markdown file's base URL
+            base_url = request_url.rsplit('/', 1)[0] + '/'
+            post_data_raw = re.sub(
+                r'!\[([^\]]*)\]\((?!https?://)([^)]+)\)',
+                lambda m: f'![{m.group(1)}]({urllib.parse.urljoin(base_url, m.group(2))})',
+                post_data_raw
+            )
+
             # Handle Quarto/R Markdown syntax
             # Convert {.r .cell-code} fenced blocks to standard ```r
             post_data_raw = re.sub(r'```\{\.r[^}]*\}', '```r', post_data_raw)
