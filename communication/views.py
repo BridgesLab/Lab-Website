@@ -377,19 +377,12 @@ class PostDetail(DetailView):
             # Strip YAML front matter (---...---) so it doesn't render as text
             post_data_raw = re.sub(r'^---\s*\n.*?\n---\s*\n', '', post_data_raw, flags=re.DOTALL)
 
-            # Handle Quarto/R Markdown fenced divs: ::: {.cell} ... :::
-            # Extract code blocks inside .cell divs and tag them as R code
-            def replace_cell_div(m):
-                inner = m.group(1)
-                # Add 'r' language tag to untagged fenced code blocks inside
-                inner = re.sub(r'```\s*\n', '```r\n', inner)
-                return inner.strip()
-            post_data_raw = re.sub(r'^:::\s*\{\.cell[^}]*\}\s*\n(.*?)^:::\s*$', replace_cell_div,
-                                   post_data_raw, flags=re.MULTILINE | re.DOTALL)
-            # Also strip any remaining ::: {.cell-output...} divs (output blocks)
-            post_data_raw = re.sub(r'^:::\s*\{\.cell-output[^}]*\}\s*\n(.*?)^:::\s*$', r'\1',
-                                   post_data_raw, flags=re.MULTILINE | re.DOTALL)
-            # Strip any remaining bare ::: div markers
+            # Handle Quarto/R Markdown syntax
+            # Convert {.r .cell-code} fenced blocks to standard ```r
+            post_data_raw = re.sub(r'```\{\.r[^}]*\}', '```r', post_data_raw)
+            # Strip language attributes from other fenced blocks (e.g. output blocks)
+            post_data_raw = re.sub(r'```\{[^}]*\}', '```', post_data_raw)
+            # Remove all ::: div markers (cell, cell-output, etc.)
             post_data_raw = re.sub(r'^:::[^\n]*$', '', post_data_raw, flags=re.MULTILINE)
 
             # 1. Check for citations before converting to HTML
