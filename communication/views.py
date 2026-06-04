@@ -377,6 +377,21 @@ class PostDetail(DetailView):
             # Strip YAML front matter (---...---) so it doesn't render as text
             post_data_raw = re.sub(r'^---\s*\n.*?\n---\s*\n', '', post_data_raw, flags=re.DOTALL)
 
+            # Handle Quarto/R Markdown fenced divs: ::: {.cell} ... :::
+            # Extract code blocks inside .cell divs and tag them as R code
+            def replace_cell_div(m):
+                inner = m.group(1)
+                # Add 'r' language tag to untagged fenced code blocks inside
+                inner = re.sub(r'```\s*\n', '```r\n', inner)
+                return inner.strip()
+            post_data_raw = re.sub(r'^:::\s*\{\.cell[^}]*\}\s*\n(.*?)^:::\s*$', replace_cell_div,
+                                   post_data_raw, flags=re.MULTILINE | re.DOTALL)
+            # Also strip any remaining ::: {.cell-output...} divs (output blocks)
+            post_data_raw = re.sub(r'^:::\s*\{\.cell-output[^}]*\}\s*\n(.*?)^:::\s*$', r'\1',
+                                   post_data_raw, flags=re.MULTILINE | re.DOTALL)
+            # Strip any remaining bare ::: div markers
+            post_data_raw = re.sub(r'^:::[^\n]*$', '', post_data_raw, flags=re.MULTILINE)
+
             # 1. Check for citations before converting to HTML
             # We check for "[^" which is the standard Markdown footnote opener
             context['has_citations'] = "[^" in post_data_raw
@@ -386,7 +401,13 @@ class PostDetail(DetailView):
             context['post_data'] = markdown.markdown(
                 post_data_raw,
                 extensions=['footnotes', 'tables', 'attr_list', 'def_list', 'mdx_math',
-                            'pymdownx.superfences', 'pymdownx.highlight', 'pymdownx.tilde',]
+                            'pymdownx.superfences', 'pymdownx.highlight', 'pymdownx.tilde',],
+                extension_configs={
+                    'pymdownx.highlight': {
+                        'use_pygments': True,
+                        'guess_lang': False,
+                    }
+                }
             )
             
         except (urllib.error.URLError, ValueError):
