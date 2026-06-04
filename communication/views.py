@@ -3,6 +3,7 @@
 So far this includes API calls for Twitter feeds and Google Calendar'''
 
 import json
+import re
 import urllib.request
 import urllib.error
 import urllib.parse
@@ -372,16 +373,20 @@ class PostDetail(DetailView):
             request = urllib.request.Request(request_url)
             response = urllib.request.urlopen(request)
             post_data_raw = response.read().decode('utf-8')
-            
+
+            # Strip YAML front matter (---...---) so it doesn't render as text
+            post_data_raw = re.sub(r'^---\s*\n.*?\n---\s*\n', '', post_data_raw, flags=re.DOTALL)
+
             # 1. Check for citations before converting to HTML
             # We check for "[^" which is the standard Markdown footnote opener
             context['has_citations'] = "[^" in post_data_raw
-            
+
             # 2. Enable extensions! 'extra' includes footnotes, tables, and more.
             # 'attr_list' allows you to add CSS classes to images/links in MD.
             context['post_data'] = markdown.markdown(
-                post_data_raw, 
-                extensions=['footnotes', 'tables', 'attr_list', 'def_list', 'fenced_code','mdx_math',]
+                post_data_raw,
+                extensions=['footnotes', 'tables', 'attr_list', 'def_list', 'mdx_math',
+                            'pymdownx.superfences', 'pymdownx.highlight', 'pymdownx.tilde',]
             )
             
         except (urllib.error.URLError, ValueError):
