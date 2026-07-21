@@ -1,61 +1,71 @@
 {% if postings %}
-<div class="container-xl rounded-3">
-    <h3 class="text-center">Positions Available</h3>
-  </div>
-{% for posting in postings %}
-<div class="card text-white rounded" iitemscope itemtype="http://schema.org/JobPosting">
-  <div class="card-header bg-info">
-    <h4 class="card-title" itemprop="title">{{ posting.title }}</h4>
-  </div>
-<div class="card-body bg-info-subtle text-black">
-<dl>
-<p class="card-text" itemprop="description">{{ posting.description|safe }}</p>
-{% if posting.hiringOrganization %}
-  <meta itemprop="hiringOrganization" content="{{ lab_name  }}, {{ posting.hiringOrganization }}" sameAs="http://bridgeslab.sph.umich.edu"/>
-{% endif %}
-{% if posting.education %}
-  <dt>Education</dt>
-  <dd itemprop="educationRequirements">{{ posting.education|safe }}</dd>
-{% endif %}
-{% if posting.qualifications %}
-  <dt>Qualifications</dt>
-  <dd itemprop="qualifications">{{ posting.qualifications|safe }}</dd>
-{% endif %}
-{% if posting.skills %}
-  <dt>Required Skills</dt>
-  <dd itemprop="skills">{{ posting.skills }}</dd>
-{% endif %}
-{% if posting.responsibilities %}
-  <dt>Responsibilities</dt> 
-  <dd itemprop="responsibilities">{{ posting.responsibilities|safe }}</dd>
-{% endif %}
-<p class="card-text">To apply please go to <a href="{{ posting.link }}" itemprop="url">{{ posting.link }}</a>.</p>
-<p class="card-text">Date Posted: <span itemprop="datePosted">{{ posting.created }}</p>
-<meta itemprop="validThrough" content="{{ posting.expiry|date:"c" }}" />
-{% if posting.employment_type %}
-<meta itemprop="employmentType" content="{{ posting.employment_type }}" />
-{% endif %}
-</dl>
- <span itemprop="jobLocation" itemscope itemtype="http://schema.org/Place"> 
-    <span itemprop="address" itemscope itemtype="http://schema.org/PostalAddress">
-      <meta itemprop="streetAddress" content="{{ address.address.line_1}} {{ address.address.line_2}} {{ address.address.line_3}} {{ address.address.line_4}}" />
-      <meta itemprop="addressLocality" content="{{ address.address.city }}" />
-      <meta itemprop="addressRegion" content="{{ address.address.state }}" />
-      <meta itemprop="addressCountry" content="{{ address.address.country }}" />
-      <meta itemprop="postalCode" content="{{ address.address.code }}" />
-    </span>
- </span>
- 
-  <span itemprop="baseSalary" itemscope itemtype="http://schema.org/MonetaryAmount"> 
-  <meta itemprop="currency" content="USD" />
-    <span itemprop="value" itemscope itemtype="http://schema.org/QuantitativeValue">
-      <meta itemprop="value" content="{{ posting.base_salary }}" />
-      <meta itemprop="unitText" content="{{ posting.base_salary_term_upper }}" />
-    </span>
- </span>
+<section id="positions" class="container-xl">
+  <div class="card">
+    <div class="card-header">
+      <h2 class="text-center card-title display-6">Positions Available</h2>
+    </div>
+    <div class="card-body">
+    {% for posting in postings %}
+      <div class="mb-4 pb-3 {% if not forloop.last %}border-bottom{% endif %}"
+           itemscope itemtype="http://schema.org/JobPosting">
+        <h3 class="h4" itemprop="title">{{ posting.title }}</h3>
 
-</div>
-</div>
-{% endfor %}
-</div>
+        <p class="card-text" itemprop="description">{{ posting.description|safe }}</p>
+
+        {% if posting.hiringOrganization %}
+          <meta itemprop="hiringOrganization" content="{{ lab_name }}, {{ posting.hiringOrganization }}" sameAs="http://bridgeslab.sph.umich.edu"/>
+        {% endif %}
+
+        <dl class="row mb-0">
+          {% if posting.education %}
+            <dt class="col-sm-3">Education</dt>
+            <dd class="col-sm-9" itemprop="educationRequirements">{{ posting.education|safe }}</dd>
+          {% endif %}
+          {% if posting.qualifications %}
+            <dt class="col-sm-3">Qualifications</dt>
+            <dd class="col-sm-9" itemprop="qualifications">{{ posting.qualifications|safe }}</dd>
+          {% endif %}
+          {% if posting.skills %}
+            <dt class="col-sm-3">Required Skills</dt>
+            <dd class="col-sm-9" itemprop="skills">{{ posting.skills }}</dd>
+          {% endif %}
+          {% if posting.responsibilities %}
+            <dt class="col-sm-3">Responsibilities</dt>
+            <dd class="col-sm-9" itemprop="responsibilities">{{ posting.responsibilities|safe }}</dd>
+          {% endif %}
+        </dl>
+
+        <p class="card-text mt-3">
+          <a class="btn btn-sm" style="background-color: var(--brand-accent); color: #fff;"
+             href="{{ posting.link }}" itemprop="url">Apply here</a>
+        </p>
+        <p class="card-text text-muted small">
+          Date Posted: <span itemprop="datePosted">{{ posting.created }}</span>
+        </p>
+
+        <meta itemprop="validThrough" content="{{ posting.expiry|date:'c' }}" />
+        {% if posting.employment_type %}
+          <meta itemprop="employmentType" content="{{ posting.employment_type }}" />
+        {% endif %}
+        <span itemprop="jobLocation" itemscope itemtype="http://schema.org/Place">
+          <span itemprop="address" itemscope itemtype="http://schema.org/PostalAddress">
+            <meta itemprop="streetAddress" content="{{ address.address.line_1 }} {{ address.address.line_2 }} {{ address.address.line_3 }} {{ address.address.line_4 }}" />
+            <meta itemprop="addressLocality" content="{{ address.address.city }}" />
+            <meta itemprop="addressRegion" content="{{ address.address.state }}" />
+            <meta itemprop="addressCountry" content="{{ address.address.country }}" />
+            <meta itemprop="postalCode" content="{{ address.address.code }}" />
+          </span>
+        </span>
+        <span itemprop="baseSalary" itemscope itemtype="http://schema.org/MonetaryAmount">
+          <meta itemprop="currency" content="USD" />
+          <span itemprop="value" itemscope itemtype="http://schema.org/QuantitativeValue">
+            <meta itemprop="value" content="{{ posting.base_salary }}" />
+            <meta itemprop="unitText" content="{{ posting.base_salary_term_upper }}" />
+          </span>
+        </span>
+      </div>
+    {% endfor %}
+    </div>
+  </div>
+</section>
 {% endif %}
