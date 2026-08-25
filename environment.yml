@@ -57,6 +57,11 @@ dependencies:
       - python-mimeparse==1.6.0
       - python-markdown-math==0.9
       - pymdown-extensions==10.21.2
+      # Fallback MySQL driver, used only when USE_PYMYSQL is set in the
+      # environment -- see lab_website/__init__.py.  The conda build of
+      # mysqlclient cannot load the mysql_native_password client plugin
+      # on the RHEL server.
+      - pymysql==1.2.0
       - pytz==2025.2
       - requests==2.33.1
       - requests-oauthlib==1.3.1

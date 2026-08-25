@@ -591,6 +591,38 @@ class PublicationViewSetTest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['results']), 4)
     
+    def test_list_includes_non_laboratory_papers(self):
+        """The list endpoint is not restricted to laboratory papers.
+
+        The base queryset was once filter(laboratory_paper=True), which made
+        the laboratory_papers action a duplicate of this endpoint and left
+        interesting_papers permanently empty.  Assert the contract directly so
+        the filter is not reintroduced.
+        """
+        url = reverse('api-publication-list')
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        flags = {result['laboratory_paper'] for result in response.data['results']}
+        self.assertIn(True, flags, 'laboratory papers missing from the list endpoint')
+        self.assertIn(False, flags, 'non-laboratory papers are being filtered out')
+
+    def test_interesting_papers_endpoint_returns_other_labs_papers(self):
+        """interesting_papers returns papers from other labs, not an empty list.
+
+        It filters the base queryset, so while that base was laboratory-papers
+        only this endpoint could never match anything: an interesting paper is
+        by definition one this lab did not write.
+        """
+        url = reverse('api-publication-interesting-papers')
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertGreater(response.data['count'], 0)
+        for result in response.data['results']:
+            self.assertTrue(result['interesting_paper'])
+            self.assertFalse(result['laboratory_paper'])
+
     def test_list_publications_json_format(self):
         """Test listing publications with JSON format."""
         url = reverse('api-publication-list')

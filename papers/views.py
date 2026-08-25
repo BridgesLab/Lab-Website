@@ -164,24 +164,35 @@ class CommentaryDelete(PermissionRequiredMixin, DeleteView):
 class PublicationViewSet(viewsets.ReadOnlyModelViewSet):
     """
     ViewSet for Publication model providing read-only API access.
-    
+
     Provides endpoints for:
-    - GET /api/v2/publications/ - List all laboratory publications
+    - GET /api/v2/publications/ - List all publications
     - GET /api/v2/publications/{id}/ - Retrieve single publication
     - GET /api/v2/publications/set/{ids}/ - Retrieve multiple publications by IDs
-    
+    - GET /api/v2/publications/laboratory_papers/ - Only papers from this lab
+    - GET /api/v2/publications/interesting_papers/ - Only papers of interest
+      from other labs
+
+    The base queryset is deliberately unfiltered.  It used to be
+    `filter(laboratory_paper=True)`, which made `laboratory_papers` a duplicate
+    of the list endpoint and left `interesting_papers` permanently empty --
+    an interesting paper is by definition one from another lab, so the two
+    flags are all but mutually exclusive.
+
     Supports filtering by:
-    - year: Exact year match
+    - year: Exact year match (also year_after / year_before for a range)
     - type: Publication type (exact or contains)
-- search: Full-text search across title, abstract, journal
-    
+    - journal: Journal name (contains)
+    - laboratory_paper / interesting_paper: Boolean flags
+    - search: Full-text search across title, abstract, journal
+
     Supports ordering by:
     - year, title, journal, date_added, date_last_modified
-    
+
     Default ordering: -date_added (newest first)
     """
-    
-    queryset = Publication.objects.filter(laboratory_paper=True)
+
+    queryset = Publication.objects.all()
     serializer_class = PublicationSerializer
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = PublicationFilter
@@ -238,7 +249,7 @@ class PublicationViewSet(viewsets.ReadOnlyModelViewSet):
         Returns:
             List of publications where laboratory_paper=True
         """
-        publications = self.get_queryset().filter(laboratory_paper=True)
+        publications = self.filter_queryset(self.get_queryset()).filter(laboratory_paper=True)
         serializer = self.get_serializer(publications, many=True)
         
         return Response({
@@ -254,7 +265,7 @@ class PublicationViewSet(viewsets.ReadOnlyModelViewSet):
         Returns:
             List of publications where interesting_paper=True
         """
-        publications = self.get_queryset().filter(interesting_paper=True)
+        publications = self.filter_queryset(self.get_queryset()).filter(interesting_paper=True)
         serializer = self.get_serializer(publications, many=True)
 
         return Response({
