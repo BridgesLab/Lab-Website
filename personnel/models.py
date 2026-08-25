@@ -39,15 +39,20 @@ SALARY_TERM_CHOICES = (
     ('year','year')
 )
 
+# These are the employmentType tokens Google accepts for schema.org/JobPosting.
+# The stored value is what goes into the structured data, so it must match the
+# vocabulary exactly.  ("TEMP", "TEMPORARY") and ("TEMPORARY", "INTERN") were
+# mis-paired here previously; JobPosting.employment_type_schema maps the legacy
+# "TEMP" rows forward.
 EMPLOYMENT_TYPE_CHOICES = (
-    ("FULL_TIME", "FULL_TIME"),
-    ("PART_TIME", "PART_TIME"),
-    ("CONTRACTOR", "CONTRACTOR"),
-    ("TEMP", "TEMPORARY"),
-    ("TEMPORARY", "INTERN"),
-    ("VOLUNTEER", "VOLUNTEER"),
-    ("PER_DIEM", "PER_DIEM"),
-    ("OTHER", "OTHER")
+    ("FULL_TIME", "Full time"),
+    ("PART_TIME", "Part time"),
+    ("CONTRACTOR", "Contractor"),
+    ("TEMPORARY", "Temporary"),
+    ("INTERN", "Intern"),
+    ("VOLUNTEER", "Volunteer"),
+    ("PER_DIEM", "Per diem"),
+    ("OTHER", "Other")
 )
     
 class Person(models.Model):
@@ -241,6 +246,16 @@ class Address(models.Model):
         '''The string representation of an Address is the address lines followed by linebreaks.'''
         return '%s\n%s\n%s\n%s\n%s, %s, %s, %s' %(self.line_1, self.line_2, self.line_3, self.line_4, self.city, self.state, self.country, self.code)
 
+    @property
+    def street_address(self):
+        '''The populated address lines, joined into a single street address.
+
+        Blank lines are dropped rather than rendered as the literal string
+        "None", which is what schema.org/PostalAddress markup needs.
+        '''
+        lines = (self.line_1, self.line_2, self.line_3, self.line_4)
+        return ', '.join(line.strip() for line in lines if line and line.strip())
+
 
 class JobPosting(models.Model):
     '''This class describes a job posting.
@@ -288,3 +303,17 @@ class JobPosting(models.Model):
             return None
         else:
             return self.base_salary_term.upper()
+
+    def employment_type_schema(self):
+        '''The employmentType token to publish in schema.org/JobPosting markup.
+
+        Google accepts FULL_TIME, PART_TIME, CONTRACTOR, TEMPORARY, INTERN,
+        VOLUNTEER, PER_DIEM and OTHER.  Rows saved before EMPLOYMENT_TYPE_CHOICES
+        was corrected may hold "TEMP", so that is mapped forward.  Returns None
+        when no type is set, so the template can omit the property entirely
+        rather than emit an empty one.
+        '''
+        if not self.employment_type:
+            return None
+        value = self.employment_type.upper()
+        return 'TEMPORARY' if value == 'TEMP' else value

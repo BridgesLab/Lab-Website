@@ -372,6 +372,20 @@ class CommentaryViewTests(TestCase):
         login = self.client.login(username='testuser', password='testpassword')
         self.assertTrue(login, 'Could not log in')
 
+    def test_commentary_review_markup_has_item_reviewed(self):
+        """The Review markup names the paper via itemReviewed.
+
+        schema.org/Review requires itemReviewed; marking the paper up with
+        `about` instead is what Search Console reports as
+        'Missing field "itemReviewed"'.
+        """
+        test_response = self.client.get('/papers/commentary/1', follow=True)
+        self.assertEqual(test_response.status_code, 200)
+        content = test_response.content.decode()
+        self.assertIn('itemtype="http://schema.org/Review"', content)
+        self.assertIn('itemprop="itemReviewed"', content)
+        self.assertNotIn('itemprop="about"', content)
+
     def test_commentary_view(self):
         """This tests the commentary-detail view, ensuring that templates are loaded correctly.  
 

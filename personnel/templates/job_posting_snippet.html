@@ -1,3 +1,12 @@
+{% comment %}
+Visible markup for open positions.
+
+There is deliberately no schema.org microdata here.  The machine-readable
+copy of these postings lives in job_posting_jsonld.html, which the homepage
+includes in its {% templatetag openblock %} block scripts {% templatetag closeblock %}.
+Adding itemprops back here would give Google two competing JobPosting
+entities on the same page.
+{% endcomment %}
 {% if postings %}
 <section id="positions" class="container-xl">
   <div class="card">
@@ -6,63 +15,54 @@
     </div>
     <div class="card-body">
     {% for posting in postings %}
-      <div class="mb-4 pb-3 {% if not forloop.last %}border-bottom{% endif %}"
-           itemscope itemtype="http://schema.org/JobPosting">
-        <h3 class="h4" itemprop="title">{{ posting.title }}</h3>
+      <div class="mb-4 pb-3 {% if not forloop.last %}border-bottom{% endif %}">
+        <h3 class="h4">{{ posting.title }}</h3>
 
-        <p class="card-text" itemprop="description">{{ posting.description|safe }}</p>
-
-        {% if posting.hiringOrganization %}
-          <meta itemprop="hiringOrganization" content="{{ lab_name }}, {{ posting.hiringOrganization }}" sameAs="http://bridgeslab.sph.umich.edu"/>
-        {% endif %}
+        <p class="card-text">{{ posting.description|safe }}</p>
 
         <dl class="row mb-0">
+          {% if posting.hiringOrganization %}
+            <dt class="col-sm-3">Employer</dt>
+            <dd class="col-sm-9">{{ lab_name }}, {{ posting.hiringOrganization }}</dd>
+          {% endif %}
           {% if posting.education %}
             <dt class="col-sm-3">Education</dt>
-            <dd class="col-sm-9" itemprop="educationRequirements">{{ posting.education|safe }}</dd>
+            <dd class="col-sm-9">{{ posting.education|safe }}</dd>
           {% endif %}
           {% if posting.qualifications %}
             <dt class="col-sm-3">Qualifications</dt>
-            <dd class="col-sm-9" itemprop="qualifications">{{ posting.qualifications|safe }}</dd>
+            <dd class="col-sm-9">{{ posting.qualifications|safe }}</dd>
           {% endif %}
           {% if posting.skills %}
             <dt class="col-sm-3">Required Skills</dt>
-            <dd class="col-sm-9" itemprop="skills">{{ posting.skills }}</dd>
+            <dd class="col-sm-9">{{ posting.skills }}</dd>
           {% endif %}
           {% if posting.responsibilities %}
             <dt class="col-sm-3">Responsibilities</dt>
-            <dd class="col-sm-9" itemprop="responsibilities">{{ posting.responsibilities|safe }}</dd>
+            <dd class="col-sm-9">{{ posting.responsibilities|safe }}</dd>
+          {% endif %}
+          {% if posting.employment_type_schema %}
+            <dt class="col-sm-3">Employment Type</dt>
+            <dd class="col-sm-9">{{ posting.get_employment_type_display }}</dd>
+          {% endif %}
+          {% if posting.base_salary %}
+            <dt class="col-sm-3">Base Salary</dt>
+            <dd class="col-sm-9">${{ posting.base_salary }}{% if posting.base_salary_term %} per {{ posting.base_salary_term }}{% endif %}</dd>
+          {% endif %}
+          {% if address %}
+            <dt class="col-sm-3">Location</dt>
+            <dd class="col-sm-9">{{ address.address.street_address }}, {{ address.address.city }}, {{ address.address.state }} {{ address.address.code }}</dd>
           {% endif %}
         </dl>
 
         <p class="card-text mt-3">
           <a class="btn btn-sm" style="background-color: var(--brand-accent); color: #fff;"
-             href="{{ posting.link }}" itemprop="url">Apply here</a>
+             href="{{ posting.link }}">Apply here</a>
         </p>
-        <p class="card-text text-muted small">
-          Date Posted: <span itemprop="datePosted">{{ posting.created }}</span>
+        <p class="card-text text-muted small mb-0">
+          Posted <time datetime="{{ posting.created|date:'Y-m-d' }}">{{ posting.created|date:"F j, Y" }}</time>{% if posting.expiry %},
+          open until <time datetime="{{ posting.expiry|date:'Y-m-d' }}">{{ posting.expiry|date:"F j, Y" }}</time>{% endif %}.
         </p>
-
-        <meta itemprop="validThrough" content="{{ posting.expiry|date:'c' }}" />
-        {% if posting.employment_type %}
-          <meta itemprop="employmentType" content="{{ posting.employment_type }}" />
-        {% endif %}
-        <span itemprop="jobLocation" itemscope itemtype="http://schema.org/Place">
-          <span itemprop="address" itemscope itemtype="http://schema.org/PostalAddress">
-            <meta itemprop="streetAddress" content="{{ address.address.line_1 }} {{ address.address.line_2 }} {{ address.address.line_3 }} {{ address.address.line_4 }}" />
-            <meta itemprop="addressLocality" content="{{ address.address.city }}" />
-            <meta itemprop="addressRegion" content="{{ address.address.state }}" />
-            <meta itemprop="addressCountry" content="{{ address.address.country }}" />
-            <meta itemprop="postalCode" content="{{ address.address.code }}" />
-          </span>
-        </span>
-        <span itemprop="baseSalary" itemscope itemtype="http://schema.org/MonetaryAmount">
-          <meta itemprop="currency" content="USD" />
-          <span itemprop="value" itemscope itemtype="http://schema.org/QuantitativeValue">
-            <meta itemprop="value" content="{{ posting.base_salary }}" />
-            <meta itemprop="unitText" content="{{ posting.base_salary_term_upper }}" />
-          </span>
-        </span>
       </div>
     {% endfor %}
     </div>

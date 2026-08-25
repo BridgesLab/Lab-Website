@@ -21,22 +21,13 @@
         "query-input": "required name=search_term_string"
       }
     }
-    {% if postings %},
-    {% for job in postings %}
-    {
-      "@type": "JobPosting",
-      "title": "{{ job.title }}",
-      "description": "{{ job.description|striptags }}",
-      "hiringOrganization": {
-        "@type": "Organization",
-        "name": "{{ lab_name }}"
-      }
-    }{% if not forloop.last %},{% endif %}
-    {% endfor %}
-    {% endif %}
   ]
 }
 </script>
+{# Open positions are marked up separately, in one complete JobPosting per
+   posting.  Keeping them out of the @graph above avoids emitting a stub
+   entity that is missing the fields Google requires. #}
+{% include "job_posting_jsonld.html" %}
 {% endblock %}
 
 {% block content %}

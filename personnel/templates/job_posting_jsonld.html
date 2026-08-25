@@ -1,0 +1,68 @@
+{% load l10n %}{% if postings and address %}
+{% comment %}
+Structured data for open positions (schema.org/JobPosting, as JSON-LD).
+
+This partial is the *single* source of truth for job posting markup.  The
+visible markup in job_posting_snippet.html deliberately carries no microdata,
+so that Google sees exactly one JobPosting entity per posting per page.
+
+Include this only from the homepage.  Repeating it on a second URL would make
+Google treat the same position as two separate job postings.
+
+Google requires: title, description, datePosted, hiringOrganization,
+jobLocation.  Recommended: validThrough, baseSalary, employmentType,
+identifier, directApply.  Dates must be ISO 8601.
+{% endcomment %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+{% for posting in postings %}
+    {
+      "@type": "JobPosting",
+      "title": "{{ posting.title|escapejs }}",
+      "description": "{{ posting.description|escapejs }}",
+      "datePosted": "{{ posting.created|date:'Y-m-d' }}",
+      "validThrough": "{{ posting.expiry|date:'Y-m-d' }}",
+      "url": "{{ posting.link|escapejs }}",
+      "directApply": true,
+      "identifier": {
+        "@type": "PropertyValue",
+        "name": "{{ lab_name|escapejs }}",
+        "value": "{{ posting.pk|unlocalize }}"
+      },
+      "hiringOrganization": {
+        "@type": "Organization",
+        "name": "{{ posting.hiringOrganization.name|default:lab_name|escapejs }}"{% if posting.hiringOrganization.department %},
+        "department": {
+          "@type": "Organization",
+          "name": "{{ posting.hiringOrganization.department|escapejs }}"
+        }{% endif %}
+      },
+      "jobLocation": {
+        "@type": "Place",
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": "{{ address.address.street_address|escapejs }}",
+          "addressLocality": "{{ address.address.city|escapejs }}",
+          "addressRegion": "{{ address.address.state|escapejs }}",
+          "postalCode": "{{ address.address.code|escapejs }}",
+          "addressCountry": "{{ address.address.country|escapejs }}"
+        }
+      }{% if posting.employment_type_schema %},
+      "employmentType": "{{ posting.employment_type_schema|escapejs }}"{% endif %}{% if posting.base_salary %},
+      "baseSalary": {
+        "@type": "MonetaryAmount",
+        "currency": "USD",
+        "value": {
+          "@type": "QuantitativeValue",
+          "value": {{ posting.base_salary|unlocalize }},
+          "unitText": "{{ posting.base_salary_term_upper|default:'YEAR'|escapejs }}"
+        }
+      }{% endif %}
+    }{% if not forloop.last %},{% endif %}
+{% endfor %}
+  ]
+}
+</script>
+{% endif %}

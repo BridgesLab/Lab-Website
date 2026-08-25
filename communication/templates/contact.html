@@ -20,10 +20,10 @@
         {% if labaddress.type == 'Primary' %}
         <p itemprop="address" itemscope itemtype="http://schema.org/PostalAddress" class="text-center">
           <span itemprop="streetAddress">
-            {{ labaddress.address.line_1 }}<br>
-            {{ labaddress.address.line_2 }}<br>
-            {{ labaddress.address.line_3 }}<br>
-            {{ labaddress.address.line_4 }}<br>
+            {% if labaddress.address.line_1 %}{{ labaddress.address.line_1 }}<br>{% endif %}
+            {% if labaddress.address.line_2 %}{{ labaddress.address.line_2 }}<br>{% endif %}
+            {% if labaddress.address.line_3 %}{{ labaddress.address.line_3 }}<br>{% endif %}
+            {% if labaddress.address.line_4 %}{{ labaddress.address.line_4 }}<br>{% endif %}
           </span>
           <span itemprop="addressLocality">{{ labaddress.address.city }}</span>,
           <span itemprop="addressRegion">{{ labaddress.address.state }}</span>,

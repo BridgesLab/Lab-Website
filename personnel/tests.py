@@ -11,7 +11,12 @@ from django.urls import reverse
 from rest_framework.test import APITestCase
 from rest_framework import status
 
-from personnel.models import Person, JobPosting, Organization, Role, JobType, Degree
+import json
+
+from django.template.loader import render_to_string
+
+from personnel.models import Person, JobPosting, Organization, Role, JobType, Degree, Address
+from communication.models import LabAddress
 from personnel.admin import CurrentLabMemberAdmin, CurrentLabMember
 from personnel.serializers import PersonSerializer, PersonListSerializer, RoleSerializer
 from lab_website.tests import BasicTests
@@ -561,3 +566,183 @@ class PersonSerializerTest(APITestCase):
         self.assertEqual(serializer.data['job_type'], 'Postdoc')
         self.assertIn('start_date', serializer.data)
         self.assertIn('end_date', serializer.data)
+
+
+class AddressStreetAddressTests(BasicTests):
+    """Tests :attr:`~personnel.models.Address.street_address`.
+
+    Blank address lines used to render as the literal string "None" wherever an
+    address was interpolated into a template, which put "None" into the
+    schema.org PostalAddress markup.
+    """
+
+    def test_street_address_joins_populated_lines(self):
+        """street_address joins the populated lines with commas."""
+        address = Address.objects.create(
+            line_1='Department of Nutritional Sciences',
+            line_2='1415 Washington Heights',
+            city='Ann Arbor', state='MI', country='US', code='48109-2029')
+        self.assertEqual(
+            address.street_address,
+            'Department of Nutritional Sciences, 1415 Washington Heights')
+
+    def test_street_address_drops_blank_lines(self):
+        """street_address never emits "None" or a stray comma for an empty line."""
+        address = Address.objects.create(
+            line_1='Department of Nutritional Sciences',
+            line_2=None, line_3='', line_4='1415 Washington Heights',
+            city='Ann Arbor', state='MI', country='US', code='48109-2029')
+        self.assertNotIn('None', address.street_address)
+        self.assertEqual(
+            address.street_address,
+            'Department of Nutritional Sciences, 1415 Washington Heights')
+
+    def test_street_address_empty_when_no_lines(self):
+        """street_address is an empty string when no lines are set."""
+        address = Address.objects.create(city='Ann Arbor', state='MI',
+                                         country='US', code='48109-2029')
+        self.assertEqual(address.street_address, '')
+
+
+class JobPostingStructuredDataTests(BasicTests):
+    """Tests the schema.org/JobPosting markup emitted for open positions.
+
+    Google requires title, description, datePosted, hiringOrganization and
+    jobLocation on a JobPosting; a posting missing any of them is dropped from
+    Search results.  These tests render the JSON-LD partial directly, so a
+    template change that breaks the JSON or drops a required field fails here
+    rather than in Search Console weeks later.
+    """
+
+    fixtures = ['test_organization', 'test_address']
+
+    #the fields Google treats as critical for JobPosting
+    REQUIRED_FIELDS = ('title', 'description', 'datePosted',
+                       'hiringOrganization', 'jobLocation')
+
+    def setUp(self):
+        """Builds a lab address and an active posting to render markup from."""
+        self.lab_address = LabAddress.objects.create(
+            type='Primary', address=Address.objects.get(pk=1))
+        self.posting = JobPosting.objects.create(
+            title='Postdoctoral Researcher',
+            description='<p>Studies of "metabolism" & physiology.</p>',
+            link='http://jobs.example.com/awesome-job?id=1&src=web',
+            hiringOrganization=Organization.objects.get(pk=1),
+            employment_type='FULL_TIME',
+            base_salary=60000,
+            base_salary_term='year',
+            active=True)
+
+    #distinguishes "argument not given" from an explicitly empty context value
+    UNSET = object()
+
+    def render_markup(self, postings=UNSET, address=UNSET, lab_name='Test Lab'):
+        """Renders the JSON-LD partial and returns the raw markup."""
+        return render_to_string('job_posting_jsonld.html', {
+            'postings': JobPosting.objects.all() if postings is self.UNSET else postings,
+            'address': self.lab_address if address is self.UNSET else address,
+            'lab_name': lab_name})
+
+    def parsed_postings(self, **kwargs):
+        """Renders the partial and returns the parsed JobPosting objects.
+
+        Fails the test if the template emits anything that is not valid JSON.
+        """
+        markup = self.render_markup(**kwargs)
+        payload = markup.split('<script type="application/ld+json">')[1].split('</script>')[0]
+        return json.loads(payload)['@graph']
+
+    def test_markup_is_valid_json(self):
+        """The rendered markup parses as JSON, with quotes and newlines escaped."""
+        self.posting.description = 'Line one\nwith a "quoted" phrase & an ampersand.'
+        self.posting.save()
+        jobs = self.parsed_postings()
+        self.assertEqual(len(jobs), 1)
+        self.assertIn('"quoted"', jobs[0]['description'])
+
+    def test_required_fields_present(self):
+        """Every field Google treats as critical is populated."""
+        job = self.parsed_postings()[0]
+        for field in self.REQUIRED_FIELDS:
+            self.assertTrue(job.get(field), 'missing required field %s' % field)
+
+    def test_date_posted_is_iso_8601(self):
+        """datePosted is an ISO 8601 date, not a localised string like "July 20, 2026"."""
+        job = self.parsed_postings()[0]
+        self.assertEqual(job['datePosted'], self.posting.created.isoformat())
+        self.assertEqual(job['validThrough'], self.posting.expiry().isoformat())
+
+    def test_job_location_is_a_place_with_an_address(self):
+        """jobLocation nests a PostalAddress and carries no "None" placeholders."""
+        location = self.parsed_postings()[0]['jobLocation']
+        self.assertEqual(location['@type'], 'Place')
+        self.assertEqual(location['address']['@type'], 'PostalAddress')
+        self.assertEqual(location['address']['addressLocality'], 'Memphis')
+        self.assertNotIn('None', location['address']['streetAddress'])
+
+    def test_base_salary_is_a_monetary_amount(self):
+        """baseSalary is a MonetaryAmount whose unitText is a Google token."""
+        salary = self.parsed_postings()[0]['baseSalary']
+        self.assertEqual(salary['@type'], 'MonetaryAmount')
+        self.assertEqual(salary['currency'], 'USD')
+        self.assertEqual(salary['value']['value'], 60000)
+        self.assertEqual(salary['value']['unitText'], 'YEAR')
+
+    def test_optional_fields_omitted_when_unset(self):
+        """A posting with no salary or employment type still renders valid markup."""
+        self.posting.base_salary = None
+        self.posting.base_salary_term = None
+        self.posting.employment_type = None
+        self.posting.save()
+        job = self.parsed_postings()[0]
+        self.assertNotIn('baseSalary', job)
+        self.assertNotIn('employmentType', job)
+        for field in self.REQUIRED_FIELDS:
+            self.assertTrue(job.get(field), 'missing required field %s' % field)
+
+    def test_no_markup_without_postings_or_address(self):
+        """Nothing is emitted when there is no posting, or no address to locate it."""
+        self.assertNotIn('application/ld+json', self.render_markup(postings=[]))
+        self.assertNotIn('application/ld+json', self.render_markup(address=None))
+
+    def test_visible_snippet_carries_no_microdata(self):
+        """The visible listing must not duplicate the JSON-LD as microdata.
+
+        Two JobPosting entities on one page is what Google reports as an
+        incomplete posting, so the visible template stays markup-free.
+        """
+        markup = render_to_string('job_posting_snippet.html', {
+            'postings': JobPosting.objects.all(),
+            'address': self.lab_address,
+            'lab_name': 'Test Lab'})
+        self.assertIn('Postdoctoral Researcher', markup)
+        self.assertNotIn('itemprop', markup)
+        self.assertNotIn('itemtype', markup)
+
+
+class JobPostingEmploymentTypeTests(BasicTests):
+    """Tests :meth:`~personnel.models.JobPosting.employment_type_schema`."""
+
+    fixtures = ['test_organization']
+
+    def make_posting(self, employment_type):
+        """Saves a posting with the given employment type."""
+        return JobPosting.objects.create(
+            title='Test', description='desc', link='http://example.com',
+            hiringOrganization=Organization.objects.get(pk=1),
+            employment_type=employment_type, active=True)
+
+    def test_employment_type_schema_passes_valid_tokens_through(self):
+        """A token Google already accepts is returned unchanged."""
+        self.assertEqual(self.make_posting('FULL_TIME').employment_type_schema(),
+                         'FULL_TIME')
+
+    def test_employment_type_schema_maps_legacy_temp(self):
+        """Legacy "TEMP" rows are published as the valid token "TEMPORARY"."""
+        self.assertEqual(self.make_posting('TEMP').employment_type_schema(),
+                         'TEMPORARY')
+
+    def test_employment_type_schema_none_when_unset(self):
+        """No employment type yields None, so the property is omitted entirely."""
+        self.assertIsNone(self.make_posting(None).employment_type_schema())
