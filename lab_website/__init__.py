@@ -23,8 +23,24 @@ in any shell used for manage.py.
 '''
 
 import os
+import sys
+import warnings
 
 if os.environ.get('USE_PYMYSQL'):
-    import pymysql
-
-    pymysql.install_as_MySQLdb()
+    try:
+        import pymysql
+    except ImportError:
+        # Fail open, not closed.  If this variable leaks into the environment
+        # of a host that has no pymysql -- a shared profile, a copied service
+        # definition, the wrong shell -- crashing here would take the whole
+        # site down at import time.  Warn loudly and leave mysqlclient in
+        # place instead, which is the correct driver on every host but the
+        # RHEL server anyway.
+        warnings.warn(
+            'USE_PYMYSQL is set but pymysql is not installed in %s. '
+            'Falling back to mysqlclient. Either install pymysql into that '
+            'interpreter, or unset USE_PYMYSQL on this host.' % sys.executable,
+            RuntimeWarning,
+        )
+    else:
+        pymysql.install_as_MySQLdb()
