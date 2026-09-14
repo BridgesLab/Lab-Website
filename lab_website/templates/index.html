@@ -24,9 +24,11 @@
   ]
 }
 </script>
-{# Open positions are marked up separately, in one complete JobPosting per
-   posting.  Keeping them out of the @graph above avoids emitting a stub
-   entity that is missing the fields Google requires. #}
+{% comment %}
+Open positions are marked up separately, in one complete JobPosting per
+posting.  Keeping them out of the @graph above avoids emitting a stub
+entity that is missing the fields Google requires.
+{% endcomment %}
 {% include "job_posting_jsonld.html" %}
 {% endblock %}
 
